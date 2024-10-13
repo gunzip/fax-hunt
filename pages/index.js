@@ -61,6 +61,11 @@ export default function Home() {
       setRender((prev) => prev + 1);
     });
 
+    socket.on("laserShot", () => {
+      const laserSound = document.getElementById("laserSound");
+      laserSound.play();
+    });
+
     // Ascolta per il reset del gioco
     socket.on("gameReset", () => {
       gameActiveRef.current = true;
@@ -141,6 +146,7 @@ export default function Home() {
 
   return (
     <div style={{ textAlign: "center" }}>
+      <audio id="laserSound" src="/laser-shot.mp3" preload="auto"></audio>
       <canvas
         ref={canvasRef}
         width={800}

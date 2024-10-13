@@ -174,6 +174,9 @@ app.prepare().then(() => {
     // Emette il colpo al client
     io.emit("newShot", shot);
 
+    // Emit event for laser shot sound
+    io.emit("laserShot");
+
     // Controlla se il colpo ha colpito il bersaglio
     let hit = false;
     if (checkHit({ x, y }, objectPosition)) {
