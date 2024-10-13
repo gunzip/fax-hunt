@@ -24,6 +24,102 @@ function getRandomVelocity() {
   return velocity;
 }
 
+const colors = [
+  "Red",
+  "Blue",
+  "Green",
+  "Yellow",
+  "Pink",
+  "Purple",
+  "Orange",
+  "Black",
+  "White",
+  "Gray",
+  "Brown",
+  "Cyan",
+  "Magenta",
+  "Lime",
+  "Olive",
+  "Maroon",
+  "Navy",
+  "Teal",
+  "Aqua",
+  "Silver",
+  "Gold",
+  "Beige",
+  "Coral",
+  "Ivory",
+  "Khaki",
+  "Lavender",
+  "Mint",
+  "Peach",
+  "Plum",
+  "Salmon",
+];
+
+const animals = [
+  "Tiger",
+  "Lion",
+  "Bear",
+  "Wolf",
+  "Eagle",
+  "Shark",
+  "Panther",
+  "Leopard",
+  "Fox",
+  "Hawk",
+  "Falcon",
+  "Cheetah",
+  "Jaguar",
+  "Cougar",
+  "Lynx",
+  "Bobcat",
+  "Ocelot",
+  "Puma",
+  "Hyena",
+  "Jackal",
+  "Otter",
+  "Badger",
+  "Wolverine",
+  "Raccoon",
+  "Skunk",
+  "Weasel",
+  "Mongoose",
+  "Meerkat",
+  "Ferret",
+  "Mink",
+];
+
+const existingUsernames = new Set();
+
+function getRandomElement(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generateUniqueUsername() {
+  let username;
+  do {
+    username = `${getRandomElement(colors)}${getRandomElement(
+      animals
+    )}${Math.floor(Math.random() * 10)}`;
+  } while (existingUsernames.has(username));
+  existingUsernames.add(username);
+  return username;
+}
+
+function deletePlayer(token) {
+  if (players[token]) {
+    existingUsernames.delete(players[token].username);
+    delete players[token];
+  }
+}
+
+function handleGameEnd() {
+  for (const token in players) {
+    deletePlayer(token);
+  }
+}
+
 // Imposta la velocità iniziale
 let objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
 
@@ -37,7 +133,7 @@ app.prepare().then(() => {
   // Endpoint API per unirsi al gioco
   server.post("/api/join", (req, res) => {
     const token = uuidv4();
-    const username = `Player_${Math.floor(Math.random() * 10000)}`;
+    const username = generateUniqueUsername();
     const color = getRandomColor();
     players[token] = { username, color };
 
@@ -164,6 +260,7 @@ app.prepare().then(() => {
       winner = null;
       objectPosition = { x: 400, y: 300 };
       objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
+      handleGameEnd();
       io.emit("gameReset");
     });
   });
