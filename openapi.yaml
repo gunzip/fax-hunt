@@ -1,0 +1,180 @@
+openapi: 3.0.0
+info:
+  title: Game API
+  version: 1.0.0
+  description: API for the interactive game where players can join, shoot at a moving target, and retrieve the current target's position.
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /api/join:
+    post:
+      summary: Join the game and receive a token.
+      operationId: joinGame
+      responses:
+        "200":
+          description: Response with token, username, and color.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinResponse"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/interact:
+    post:
+      summary: Shoot at the target.
+      operationId: interact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InteractRequest"
+      responses:
+        "200":
+          description: The shot was successfully processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InteractResponse"
+        "400":
+          description: Invalid request due to missing or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests; the user should retry after some time.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/target:
+    get:
+      summary: Get the current position of the target.
+      operationId: getTarget
+      responses:
+        "200":
+          description: Response with the target's coordinates.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TargetResponse"
+        "429":
+          description: Too many requests; the user should retry after some time.
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    JoinResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Unique token assigned to the player.
+        username:
+          type: string
+          description: Randomly generated username.
+        color:
+          type: string
+          description: Unique color assigned to the player in hexadecimal format.
+      required:
+        - token
+        - username
+        - color
+
+    InteractRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Player's unique token.
+        x:
+          type: number
+          description: X coordinate of the shot.
+        y:
+          type: number
+          description: Y coordinate of the shot.
+      required:
+        - token
+        - x
+        - y
+
+    InteractResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Result message of the interaction.
+        success:
+          type: boolean
+          description: Indicates if the request was successfully processed.
+        hit:
+          type: boolean
+          description: Indicates if the shot hit the target.
+      required:
+        - message
+        - success
+        - hit
+
+    TargetResponse:
+      type: object
+      properties:
+        x:
+          type: number
+          description: X coordinate of the target.
+        y:
+          type: number
+          description: Y coordinate of the target.
+      required:
+        - x
+        - y
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message.
+        retryAfter:
+          type: integer
+          description: Number of seconds to wait before retrying (only for 429 errors).
+      required:
+        - error
+
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization

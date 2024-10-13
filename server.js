@@ -101,9 +101,49 @@ app.prepare().then(() => {
     }
   });
 
-  // Endpoint API per ottenere la posizione attuale del bersaglio
+  const targetRequestTimes = {}; // Memorizza l'ultimo tempo di richiesta per ogni IP
+
+  // Endpoint API per ottenere la posizione attuale del bersaglio con rate limiting e ritardo
   server.get("/api/target", (req, res) => {
-    res.status(200).json({ x: objectPosition.x, y: objectPosition.y });
+    const ip = req.ip;
+
+    const currentTime = Date.now();
+    const lastRequestTime = targetRequestTimes[ip] || 0;
+    const timeSinceLastRequest = currentTime - lastRequestTime;
+
+    const rateLimitWindow = 2000; // 2000ms = 2 secondi
+
+    // Controlla se il client deve attendere prima di fare una nuova richiesta
+    if (timeSinceLastRequest < rateLimitWindow) {
+      const waitTime = Math.ceil(
+        (rateLimitWindow - timeSinceLastRequest) / 1000
+      ); // Tempo di attesa in secondi
+
+      // Imposta l'intestazione Retry-After
+      res.set("Retry-After", waitTime.toString());
+
+      return res.status(429).json({
+        error: "Troppe richieste. Attendi prima di riprovare.",
+        retryAfter: waitTime,
+      });
+    }
+
+    targetRequestTimes[ip] = currentTime;
+
+    // Salva la posizione attuale
+    const currentPosition = { x: objectPosition.x, y: objectPosition.y };
+
+    // Imposta un ritardo di 500ms nella risposta
+    setTimeout(() => {
+      // Aggiungi rumore alle coordinate
+      const noiseLevel = 10; // Puoi regolare questo valore
+      const noisyPosition = {
+        x: currentPosition.x + (Math.random() * noiseLevel - noiseLevel / 2),
+        y: currentPosition.y + (Math.random() * noiseLevel - noiseLevel / 2),
+      };
+
+      res.status(200).json(noisyPosition);
+    }, 100);
   });
 
   // Servizio delle pagine Next.js
@@ -153,6 +193,16 @@ app.prepare().then(() => {
 
   // Funzione per aggiornare la posizione del bersaglio utilizzando vettori di velocità
   function updateObjectPosition() {
+    // Aggiungi un cambiamento casuale di velocità occasionalmente
+    if (Math.random() < 0.05) {
+      // 5% di probabilità ogni aggiornamento
+      objectVelocity.vx += Math.random() * 2 - 1; // Cambia la velocità tra -1 e 1
+      objectVelocity.vy += Math.random() * 2 - 1;
+      // Limita la velocità massima
+      objectVelocity.vx = Math.max(-5, Math.min(5, objectVelocity.vx));
+      objectVelocity.vy = Math.max(-5, Math.min(5, objectVelocity.vy));
+    }
+
     // Aggiorna la posizione in base alla velocità
     objectPosition.x += objectVelocity.vx;
     objectPosition.y += objectVelocity.vy;
