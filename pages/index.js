@@ -153,12 +153,30 @@ export default function Home() {
       <audio id="laserSound" src="/laser-shot.mp3" preload="auto"></audio>
       <audio id="winning" src="/winning.mp3" preload="auto"></audio>
       <audio id="explosion" src="/explosion.mp3" preload="auto"></audio>
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        style={{ border: "1px solid black" }}
-      />
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <a
+          href="/openapi.yaml"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ marginBottom: "10px" }}
+        >
+          Read the OpenAPI Specification in order to start playing the game!
+        </a>
+
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={600}
+          style={{ border: "1px solid black" }}
+        />
+      </div>
       {!gameActiveRef.current && winnerRef.current && (
         <h1>{`${winnerRef.current} vince il gioco!`}</h1>
       )}
