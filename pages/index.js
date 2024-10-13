@@ -42,6 +42,9 @@ export default function Home() {
       // Triggera il render
       setRender((prev) => prev + 1);
 
+      const laserSound = document.getElementById("laserSound");
+      laserSound.play();
+
       // Rimuove il colpo dopo 1 secondo
       setTimeout(() => {
         shotsRef.current = shotsRef.current.filter((s) => s !== shot);
@@ -56,14 +59,15 @@ export default function Home() {
 
     // Ascolta per l'evento di fine gioco
     socket.on("gameOver", ({ winner }) => {
+      const explosion = document.getElementById("explosion");
+      explosion.play();
+
+      const winning = document.getElementById("winning");
+      winning.play();
+
       gameActiveRef.current = false;
       winnerRef.current = winner;
       setRender((prev) => prev + 1);
-    });
-
-    socket.on("laserShot", () => {
-      const laserSound = document.getElementById("laserSound");
-      laserSound.play();
     });
 
     // Ascolta per il reset del gioco
@@ -147,6 +151,8 @@ export default function Home() {
   return (
     <div style={{ textAlign: "center" }}>
       <audio id="laserSound" src="/laser-shot.mp3" preload="auto"></audio>
+      <audio id="winning" src="/winning.mp3" preload="auto"></audio>
+      <audio id="explosion" src="/explosion.mp3" preload="auto"></audio>
       <canvas
         ref={canvasRef}
         width={800}
