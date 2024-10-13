@@ -58,34 +58,42 @@ export default function Home() {
     const context = canvas.getContext("2d");
     let animationFrameId;
 
-    const render = () => {
-      context.clearRect(0, 0, canvas.width, canvas.height);
+    const backgroundImage = new Image();
+    backgroundImage.src = "/background.png";
 
-      if (gameActive) {
-        // Draw the moving object
-        context.beginPath();
-        context.arc(objectPosition.x, objectPosition.y, 10, 0, 2 * Math.PI);
-        context.fillStyle = "blue";
-        context.fill();
-      }
+    backgroundImage.onload = () => {
+      context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
 
-      // Draw shots
-      shots.forEach((shot) => {
-        context.beginPath();
-        context.arc(shot.x, shot.y, 5, 0, 2 * Math.PI);
-        context.fillStyle = shot.color;
-        context.fill();
+      const render = () => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
 
-        // Draw username
-        context.font = "12px Arial";
-        context.fillStyle = "black";
-        context.fillText(shot.username, shot.x + 8, shot.y - 8);
-      });
+        if (gameActive) {
+          // Draw the moving object
+          context.beginPath();
+          context.arc(objectPosition.x, objectPosition.y, 10, 0, 2 * Math.PI);
+          context.fillStyle = "blue";
+          context.fill();
+        }
 
-      animationFrameId = requestAnimationFrame(render);
+        // Draw shots
+        shots.forEach((shot) => {
+          context.beginPath();
+          context.arc(shot.x, shot.y, 5, 0, 2 * Math.PI);
+          context.fillStyle = shot.color;
+          context.fill();
+
+          // Draw username
+          context.font = "12px Arial";
+          context.fillStyle = "black";
+          context.fillText(shot.username, shot.x + 8, shot.y - 8);
+        });
+
+        animationFrameId = requestAnimationFrame(render);
+      };
+
+      render();
     };
-
-    render();
 
     return () => {
       cancelAnimationFrame(animationFrameId);
