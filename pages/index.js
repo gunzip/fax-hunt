@@ -7,98 +7,133 @@ let socket;
 
 export default function Home() {
   const canvasRef = useRef(null);
-  const [objectPosition, setObjectPosition] = useState({ x: 400, y: 300 });
-  const [shots, setShots] = useState([]);
-  const [gameActive, setGameActive] = useState(true);
-  const [winner, setWinner] = useState(null);
+
+  // Utilizziamo useRef per valori che cambiano frequentemente
+  const objectPositionRef = useRef({ x: 400, y: 300 });
+  const shotsRef = useRef([]);
+  const gameActiveRef = useRef(true);
+  const winnerRef = useRef(null);
+
+  // Stato per triggerare re-render solo quando necessario (es. mostrare vincitore)
+  const [, setRender] = useState(0);
+
+  // Ref per l'immagine di sfondo
+  const backgroundImageRef = useRef(null);
 
   useEffect(() => {
     socketInitializer();
+    preloadBackgroundImage();
+    // Pulizia socket alla disconnessione del componente
+    return () => {
+      if (socket) socket.disconnect();
+    };
   }, []);
 
-  const socketInitializer = async () => {
+  const socketInitializer = () => {
     socket = io();
 
     socket.on("connect", () => {
-      console.log("Connected to server");
+      console.log("Connesso al server");
     });
 
-    // Listen for new shots
+    // Ascolta per nuovi colpi
     socket.on("newShot", (shot) => {
-      setShots((prevShots) => [...prevShots, shot]);
+      shotsRef.current.push(shot);
+      // Triggera il render
+      setRender((prev) => prev + 1);
 
-      // Remove the shot after 1 second
+      // Rimuove il colpo dopo 1 secondo
       setTimeout(() => {
-        setShots((prevShots) => prevShots.filter((s) => s !== shot));
+        shotsRef.current = shotsRef.current.filter((s) => s !== shot);
+        setRender((prev) => prev + 1);
       }, 1000);
     });
 
-    // Listen for object position updates
+    // Ascolta per aggiornamenti della posizione dell'oggetto
     socket.on("objectPosition", (position) => {
-      setObjectPosition(position);
+      objectPositionRef.current = position;
     });
 
-    // Listen for game over event
+    // Ascolta per l'evento di fine gioco
     socket.on("gameOver", ({ winner }) => {
-      setGameActive(false);
-      setWinner(winner);
+      gameActiveRef.current = false;
+      winnerRef.current = winner;
+      setRender((prev) => prev + 1);
     });
 
-    // Listen for game reset
+    // Ascolta per il reset del gioco
     socket.on("gameReset", () => {
-      setGameActive(true);
-      setWinner(null);
-      setShots([]);
-      setObjectPosition({ x: 400, y: 300 });
+      gameActiveRef.current = true;
+      winnerRef.current = null;
+      shotsRef.current = [];
+      objectPositionRef.current = { x: 400, y: 300 };
+      setRender((prev) => prev + 1);
     });
   };
 
-  useEffect(() => {
+  const preloadBackgroundImage = () => {
+    const background = new Image();
+    background.src = "/background.png";
+    background.onload = () => {
+      backgroundImageRef.current = background;
+      draw(); // Inizia il rendering una volta caricata l'immagine
+    };
+  };
+
+  const draw = () => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
-    let animationFrameId;
 
-    const backgroundImage = new Image();
-    backgroundImage.src = "/background.png";
+    const render = () => {
+      if (!backgroundImageRef.current) {
+        requestAnimationFrame(render);
+        return;
+      }
 
-    backgroundImage.onload = () => {
-      context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+      // Clear canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
 
-      const render = () => {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+      // Draw background
+      context.drawImage(
+        backgroundImageRef.current,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
 
-        if (gameActive) {
-          // Draw the moving object
-          context.beginPath();
-          context.arc(objectPosition.x, objectPosition.y, 10, 0, 2 * Math.PI);
-          context.fillStyle = "blue";
-          context.fill();
-        }
+      if (gameActiveRef.current) {
+        // Disegna l'oggetto mobile
+        context.beginPath();
+        context.arc(
+          objectPositionRef.current.x,
+          objectPositionRef.current.y,
+          10,
+          0,
+          2 * Math.PI
+        );
+        context.fillStyle = "blue";
+        context.fill();
+      }
 
-        // Draw shots
-        shots.forEach((shot) => {
-          context.beginPath();
-          context.arc(shot.x, shot.y, 5, 0, 2 * Math.PI);
-          context.fillStyle = shot.color;
-          context.fill();
+      // Disegna i colpi
+      shotsRef.current.forEach((shot) => {
+        context.beginPath();
+        context.arc(shot.x, shot.y, 5, 0, 2 * Math.PI);
+        context.fillStyle = shot.color;
+        context.fill();
 
-          // Draw username
-          context.font = "12px Arial";
-          context.fillStyle = "black";
-          context.fillText(shot.username, shot.x + 8, shot.y - 8);
-        });
+        // Disegna il nome utente
+        context.font = "12px Arial";
+        context.fillStyle = "black";
+        context.fillText(shot.username, shot.x + 8, shot.y - 8);
+      });
 
-        animationFrameId = requestAnimationFrame(render);
-      };
-
-      render();
+      requestAnimationFrame(render);
     };
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [objectPosition, shots, gameActive]);
+    render();
+  };
 
   const handleResetGame = () => {
     socket.emit("resetGame");
@@ -112,13 +147,15 @@ export default function Home() {
         height={600}
         style={{ border: "1px solid black" }}
       />
-      {!gameActive && winner && <h1>{`${winner} wins the game!`}</h1>}
-      {!gameActive && (
+      {!gameActiveRef.current && winnerRef.current && (
+        <h1>{`${winnerRef.current} vince il gioco!`}</h1>
+      )}
+      {!gameActiveRef.current && (
         <button
           onClick={handleResetGame}
           style={{ fontSize: "16px", padding: "10px 20px" }}
         >
-          Restart Game
+          Riavvia Gioco
         </button>
       )}
     </div>
