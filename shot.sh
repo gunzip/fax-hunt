@@ -29,40 +29,56 @@ declare -a timestamps
 
 # Funzione per ottenere la posizione del bersaglio
 function get_target_position() {
-  TARGET_RESPONSE=$(curl -s -i -X GET "$BASE_URL/api/target" -H "Authorization: Bearer $TOKEN")
+  local max_retries=5
+  local retry_count=0
 
-  # Controlla se la risposta include un 429
-  HTTP_STATUS=$(echo "$TARGET_RESPONSE" | grep HTTP | awk '{print $2}')
+  while [ $retry_count -lt $max_retries ]; do
+    TARGET_RESPONSE=$(curl -s -i -X GET "$BASE_URL/api/target" -H "Authorization: Bearer $TOKEN")
 
-  if [ "$HTTP_STATUS" == "429" ]; then
-    # Estrai il valore di Retry-After dalle intestazioni
-    RETRY_AFTER=$(echo "$TARGET_RESPONSE" | grep "Retry-After:" | awk '{print $2}' | tr -d '\r')
-    echo "Troppe richieste. Attendi $RETRY_AFTER secondi."
-    sleep $RETRY_AFTER
-    return 1
-  fi
+    # Controlla lo status HTTP
+    HTTP_STATUS=$(echo "$TARGET_RESPONSE" | grep HTTP | awk '{print $2}')
 
-  # Estrai il corpo della risposta
-  TARGET_BODY=$(echo "$TARGET_RESPONSE" | sed -n '/^\r$/,$p' | sed '1d')
+    if [ "$HTTP_STATUS" == "429" ]; then
+      # Estrai il valore di Retry-After dalle intestazioni
+      RETRY_AFTER=$(echo "$TARGET_RESPONSE" | grep -i "Retry-After:" | awk '{print $2}' | tr -d '\r')
+      if [ -z "$RETRY_AFTER" ]; then
+        RETRY_AFTER=5
+      fi
+      echo "Troppe richieste. Attendi $RETRY_AFTER secondi prima di ritentare."
+      sleep $RETRY_AFTER
+      retry_count=$((retry_count + 1))
+      continue
+    fi
 
-  TARGET_X=$(echo "$TARGET_BODY" | jq '.x')
-  TARGET_Y=$(echo "$TARGET_BODY" | jq '.y')
+    if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+      # Estrai il corpo della risposta
+      TARGET_BODY=$(echo "$TARGET_RESPONSE" | sed -n '/^\r$/,$p' | sed '1d')
 
-  # Memorizza la posizione e il timestamp
-  # Usa node per ottenere il timestamp in millisecondi
-  current_time=$(node -e 'console.log(Date.now())')
-  timestamps+=("$current_time")
-  positions_x+=("$TARGET_X")
-  positions_y+=("$TARGET_Y")
+      TARGET_X=$(echo "$TARGET_BODY" | jq '.x')
+      TARGET_Y=$(echo "$TARGET_BODY" | jq '.y')
 
-  # Mantieni solo gli ultimi 2 dati
-  if [ "${#positions_x[@]}" -gt 2 ]; then
-    positions_x=("${positions_x[@]: -2}")
-    positions_y=("${positions_y[@]: -2}")
-    timestamps=("${timestamps[@]: -2}")
-  fi
+      # Memorizza la posizione e il timestamp
+      current_time=$(node -e 'console.log(Date.now())')
+      timestamps+=("$current_time")
+      positions_x+=("$TARGET_X")
+      positions_y+=("$TARGET_Y")
 
-  return 0
+      # Mantieni solo gli ultimi 2 dati
+      if [ "${#positions_x[@]}" -gt 2 ]; then
+        positions_x=("${positions_x[@]: -2}")
+        positions_y=("${positions_y[@]: -2}")
+        timestamps=("${timestamps[@]: -2}")
+      fi
+
+      return 0
+    else
+      echo "Errore nella richiesta: HTTP status $HTTP_STATUS."
+      return 1
+    fi
+  done
+
+  echo "Massimo numero di tentativi raggiunto. Impossibile ottenere la posizione del bersaglio."
+  return 1
 }
 
 # Funzione per inviare colpi multipli attorno alla posizione prevista
@@ -128,29 +144,67 @@ function send_shots() {
     shot_x=$(echo "$shot_x" | awk -v max="$canvas_width" '{ if ($1 < 0) print 0; else if ($1 > max) print max; else print $1 }')
     shot_y=$(echo "$shot_y" | awk -v max="$canvas_height" '{ if ($1 < 0) print 0; else if ($1 > max) print max; else print $1 }')
 
-    # Invia il colpo all'API /api/FIRE
-    FIRE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/fire" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer $TOKEN" \
-      -d "{\"x\":$shot_x,\"y\":$shot_y}")
+    # Invia il colpo all'API /api/fire con retry logic
+    local max_retries=5
+    local retry_count=0
+    local fire_success=0
 
-    MESSAGE=$(echo "$FIRE_RESPONSE" | jq -r '.message')
-    SUCCESS=$(echo "$FIRE_RESPONSE" | jq '.success')
-    HIT=$(echo "$FIRE_RESPONSE" | jq '.hit')
+    while [ $retry_count -lt $max_retries ]; do
+      FIRE_RESPONSE=$(curl -s -i -X POST "$BASE_URL/api/fire" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $TOKEN" \
+        -d "{\"x\":$shot_x,\"y\":$shot_y}")
 
-    # Stampa il risultato del colpo
-    echo "Tentativo di colpire a ($shot_x, $shot_y): $MESSAGE"
+      # Controlla lo status HTTP
+      HTTP_STATUS=$(echo "$FIRE_RESPONSE" | grep HTTP | awk '{print $2}')
 
-    # Se il colpo ha colpito, termina lo script
-    if [ "$HIT" == "true" ]; then
-      echo "Hai colpito il bersaglio e vinto il gioco!"
-      exit 0
-    fi
+      if [ "$HTTP_STATUS" == "429" ]; then
+        # Estrai il valore di Retry-After dalle intestazioni
+        RETRY_AFTER=$(echo "$FIRE_RESPONSE" | grep -i "Retry-After:" | awk '{print $2}' | tr -d '\r')
+        if [ -z "$RETRY_AFTER" ]; then
+          RETRY_AFTER=5
+        fi
+        echo "Troppe richieste per fire. Attendi $RETRY_AFTER secondi prima di ritentare."
+        sleep $RETRY_AFTER
+        retry_count=$((retry_count + 1))
+        continue
+      fi
 
-    # Se il gioco è terminato, esci dallo script
-    if [ "$SUCCESS" == "false" ]; then
-      echo "Il gioco è terminato."
-      exit 0
+      if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+        # Estrai il corpo della risposta
+        FIRE_BODY=$(echo "$FIRE_RESPONSE" | sed -n '/^\r$/,$p' | sed '1d')
+
+        MESSAGE=$(echo "$FIRE_BODY" | jq -r '.message')
+        SUCCESS=$(echo "$FIRE_BODY" | jq '.success')
+        HIT=$(echo "$FIRE_BODY" | jq '.hit')
+
+        # Stampa il risultato del colpo
+        echo "Tentativo di colpire a ($shot_x, $shot_y): $MESSAGE"
+
+        # Se il colpo ha colpito, termina lo script
+        if [ "$HIT" == "true" ]; then
+          echo "Hai colpito il bersaglio e vinto il gioco!"
+          exit 0
+        fi
+
+        # Se il gioco è terminato, esci dallo script
+        if [ "$SUCCESS" == "false" ]; then
+          echo "Il gioco è terminato."
+          exit 0
+        fi
+
+        fire_success=1
+        break
+      else
+        echo "Errore nella richiesta fire: HTTP status $HTTP_STATUS."
+        retry_count=$((retry_count + 1))
+        sleep 5
+      fi
+    done
+
+    if [ $fire_success -ne 1 ]; then
+      echo "Massimo numero di tentativi per fire raggiunto. Continuando con il prossimo colpo."
+      continue
     fi
 
     # Attendi un breve intervallo tra i colpi
