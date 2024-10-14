@@ -25,25 +25,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/interact:
+  /api/fire:
     post:
       summary: Shoot at the target.
-      operationId: interact
+      operationId: Fire
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/InteractRequest"
+              $ref: "#/components/schemas/FireRequest"
       responses:
         "200":
           description: The shot was successfully processed.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InteractResponse"
+                $ref: "#/components/schemas/FireResponse"
         "400":
           description: Invalid request due to missing or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid token.
           content:
             application/json:
               schema:
@@ -77,6 +83,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TargetResponse"
+        "400":
+          description: Invalid request due to missing or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           description: Too many requests; the user should retry after some time.
           headers:
@@ -114,12 +132,9 @@ components:
         - username
         - color
 
-    InteractRequest:
+    FireRequest:
       type: object
       properties:
-        token:
-          type: string
-          description: Player's unique token.
         x:
           type: number
           description: X coordinate of the shot.
@@ -127,16 +142,15 @@ components:
           type: number
           description: Y coordinate of the shot.
       required:
-        - token
         - x
         - y
 
-    InteractResponse:
+    FireResponse:
       type: object
       properties:
         message:
           type: string
-          description: Result message of the interaction.
+          description: Result message of the shot.
         success:
           type: boolean
           description: Indicates if the request was successfully processed.

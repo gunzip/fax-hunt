@@ -15,6 +15,12 @@ let gameActive = true;
 let winner = null;
 let objectPosition = { x: 400, y: 300 }; // Posizione iniziale del bersaglio
 
+function resetGame() {
+  gameActive = true;
+  objectPosition = { x: 0, y: 0 }; // Esempio di reset della posizione
+  console.log("Il gioco è stato resettato");
+}
+
 // Funzione per ottenere una velocità casuale tra -3 e 3, escluso zero
 function getRandomVelocity() {
   let velocity = 0;
@@ -120,6 +126,23 @@ function handleGameEnd() {
   }
 }
 
+function extractToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) {
+    return res.status(401).json({ error: "Token di autenticazione mancante" });
+  }
+
+  const token = authHeader.split(" ")[1]; // Assumendo che l'header sia del tipo "Bearer <token>"
+  if (!token) {
+    return res
+      .status(400)
+      .json({ error: "Token di autenticazione non valido" });
+  }
+
+  req.token = token;
+  next();
+}
+
 // Imposta la velocità iniziale
 let objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
 
@@ -140,14 +163,11 @@ app.prepare().then(() => {
     res.status(200).json({ token, username, color });
   });
 
-  // Endpoint API per interagire (sparare)
-  server.post("/api/interact", (req, res) => {
-    const { token, x, y } = req.body;
+  server.post("/api/fire", extractToken, (req, res) => {
+    const { x, y } = req.body;
 
-    if (!token || x == null || y == null) {
-      return res
-        .status(400)
-        .json({ error: "Token e coordinate sono richiesti" });
+    if (x == null || y == null) {
+      return res.status(400).json({ error: "Coordinate richieste" });
     }
 
     const player = players[token];
@@ -181,6 +201,8 @@ app.prepare().then(() => {
       winner = player.username;
       io.emit("gameOver", { winner });
       hit = true;
+      // reset game status after 60 seconds of inactivity
+      setTimeout(resetGame, 60000);
     }
 
     // Risponde al giocatore con informazioni sull'esito
@@ -200,11 +222,9 @@ app.prepare().then(() => {
   const targetRequestTimes = {}; // Memorizza l'ultimo tempo di richiesta per ogni IP
 
   // Endpoint API per ottenere la posizione attuale del bersaglio con rate limiting e ritardo
-  server.get("/api/target", (req, res) => {
-    const ip = req.ip;
-
+  server.get("/api/target", extractToken, (req, res) => {
     const currentTime = Date.now();
-    const lastRequestTime = targetRequestTimes[ip] || 0;
+    const lastRequestTime = targetRequestTimes[req.token] || 0;
     const timeSinceLastRequest = currentTime - lastRequestTime;
 
     const rateLimitWindow = 2000; // 2000ms = 2 secondi
@@ -229,7 +249,7 @@ app.prepare().then(() => {
     // Salva la posizione attuale
     const currentPosition = { x: objectPosition.x, y: objectPosition.y };
 
-    // Imposta un ritardo di 500ms nella risposta
+    // Imposta un ritardo nella risposta
     setTimeout(() => {
       // Aggiungi rumore alle coordinate
       const noiseLevel = 10; // Puoi regolare questo valore
