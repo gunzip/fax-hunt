@@ -17,7 +17,7 @@ let objectPosition = { x: 400, y: 300 }; // Posizione iniziale del bersaglio
 
 function resetGame() {
   gameActive = true;
-  objectPosition = { x: 0, y: 0 }; // Esempio di reset della posizione
+  objectPosition = { x: 400, y: 300 }; // Esempio di reset della posizione
   console.log("Il gioco è stato resettato");
 }
 
@@ -170,7 +170,7 @@ app.prepare().then(() => {
       return res.status(400).json({ error: "Coordinate richieste" });
     }
 
-    const player = players[token];
+    const player = players[req.token];
 
     if (!player) {
       return res.status(400).json({ error: "Token non valido" });
@@ -199,6 +199,7 @@ app.prepare().then(() => {
     if (checkHit({ x, y }, objectPosition)) {
       gameActive = false;
       winner = player.username;
+      console.log(`Il giocatore ${player.username} ha vinto!`, req.token);
       io.emit("gameOver", { winner });
       hit = true;
       // reset game status after 60 seconds of inactivity
@@ -223,6 +224,12 @@ app.prepare().then(() => {
 
   // Endpoint API per ottenere la posizione attuale del bersaglio con rate limiting e ritardo
   server.get("/api/target", extractToken, (req, res) => {
+    const player = players[req.token];
+
+    if (!player) {
+      return res.status(400).json({ error: "Token non valido" });
+    }
+
     const currentTime = Date.now();
     const lastRequestTime = targetRequestTimes[req.token] || 0;
     const timeSinceLastRequest = currentTime - lastRequestTime;
@@ -244,7 +251,7 @@ app.prepare().then(() => {
       });
     }
 
-    targetRequestTimes[ip] = currentTime;
+    targetRequestTimes[req.token] = currentTime;
 
     // Salva la posizione attuale
     const currentPosition = { x: objectPosition.x, y: objectPosition.y };

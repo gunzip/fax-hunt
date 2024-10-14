@@ -29,7 +29,7 @@ declare -a timestamps
 
 # Funzione per ottenere la posizione del bersaglio
 function get_target_position() {
-  TARGET_RESPONSE=$(curl -s -i -X GET "$BASE_URL/api/target")
+  TARGET_RESPONSE=$(curl -s -i -X GET "$BASE_URL/api/target" -H "Authorization: Bearer $TOKEN")
 
   # Controlla se la risposta include un 429
   HTTP_STATUS=$(echo "$TARGET_RESPONSE" | grep HTTP | awk '{print $2}')
@@ -128,14 +128,15 @@ function send_shots() {
     shot_x=$(echo "$shot_x" | awk -v max="$canvas_width" '{ if ($1 < 0) print 0; else if ($1 > max) print max; else print $1 }')
     shot_y=$(echo "$shot_y" | awk -v max="$canvas_height" '{ if ($1 < 0) print 0; else if ($1 > max) print max; else print $1 }')
 
-    # Invia il colpo all'API /api/interact
-    INTERACT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/interact" \
+    # Invia il colpo all'API /api/FIRE
+    FIRE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/fire" \
       -H "Content-Type: application/json" \
-      -d "{\"token\":\"$TOKEN\",\"x\":$shot_x,\"y\":$shot_y}")
+      -H "Authorization: Bearer $TOKEN" \
+      -d "{\"x\":$shot_x,\"y\":$shot_y}")
 
-    MESSAGE=$(echo "$INTERACT_RESPONSE" | jq -r '.message')
-    SUCCESS=$(echo "$INTERACT_RESPONSE" | jq '.success')
-    HIT=$(echo "$INTERACT_RESPONSE" | jq '.hit')
+    MESSAGE=$(echo "$FIRE_RESPONSE" | jq -r '.message')
+    SUCCESS=$(echo "$FIRE_RESPONSE" | jq '.success')
+    HIT=$(echo "$FIRE_RESPONSE" | jq '.hit')
 
     # Stampa il risultato del colpo
     echo "Tentativo di colpire a ($shot_x, $shot_y): $MESSAGE"
