@@ -37,7 +37,7 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
 
     if (requestCounts[rateLimitKey].length >= maxRequests) {
       const waitTime = Math.ceil(
-        (milliseconds - (currentTime - requestCounts[player][0])) / 1000
+        (milliseconds - (currentTime - requestCounts[rateLimitKey][0])) / 1000
       ); // Tempo di attesa in secondi
 
       // Imposta l'intestazione Retry-After
@@ -322,9 +322,11 @@ app.prepare().then(() => {
     }
   }, 20); // Aggiorna ogni 20ms per un movimento più fluido
 
-  httpServer.listen(3000, (err) => {
+  const PORT = process.env.PORT || 3000;
+
+  httpServer.listen(PORT, (err) => {
     if (err) throw err;
-    console.log("> Pronto su http://localhost:3000");
+    console.log(`> Pronto su http://localhost:${PORT}`);
   });
 
   // Funzione per ottenere un colore casuale
