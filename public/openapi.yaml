@@ -138,9 +138,13 @@ components:
         x:
           type: number
           description: X coordinate of the shot.
+          minimum: 0
+          maximum: 800
         y:
           type: number
           description: Y coordinate of the shot.
+          minimum: 0
+          maximum: 600
       required:
         - x
         - y
@@ -168,9 +172,13 @@ components:
         x:
           type: number
           description: X coordinate of the target.
+          minimum: 0
+          maximum: 800
         y:
           type: number
           description: Y coordinate of the target.
+          minimum: 0
+          maximum: 600
       required:
         - x
         - y

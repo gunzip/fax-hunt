@@ -353,8 +353,8 @@ app.prepare().then(() => {
       objectVelocity.vx += Math.random() * 2 - 1; // Cambia la velocità tra -1 e 1
       objectVelocity.vy += Math.random() * 2 - 1;
       // Limita la velocità massima
-      objectVelocity.vx = Math.max(-5, Math.min(5, objectVelocity.vx));
-      objectVelocity.vy = Math.max(-5, Math.min(5, objectVelocity.vy));
+      objectVelocity.vx = Math.max(-15, Math.min(15, objectVelocity.vx));
+      objectVelocity.vy = Math.max(-15, Math.min(15, objectVelocity.vy));
     }
 
     // Aggiorna la posizione in base alla velocità
