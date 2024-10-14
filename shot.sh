@@ -2,9 +2,10 @@
 
 # URL base del server
 BASE_URL="http://localhost:3000"
+# BASE_URL="https://b9dscf5d-3000.euw.devtunnels.ms"
 
 # Unisci il gioco e ottieni il token
-JOIN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/join")
+JOIN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/join" -d"{}")
 TOKEN=$(echo "$JOIN_RESPONSE" | jq -r '.token')
 USERNAME=$(echo "$JOIN_RESPONSE" | jq -r '.username')
 COLOR=$(echo "$JOIN_RESPONSE" | jq -r '.color')
@@ -48,7 +49,7 @@ function get_target_position() {
   TARGET_Y=$(echo "$TARGET_BODY" | jq '.y')
 
   # Memorizza la posizione e il timestamp
-  # Usa python per ottenere il timestamp in millisecondi
+  # Usa node per ottenere il timestamp in millisecondi
   current_time=$(node -e 'console.log(Date.now())')
   timestamps+=("$current_time")
   positions_x+=("$TARGET_X")

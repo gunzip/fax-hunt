@@ -17,12 +17,13 @@ export default function Home() {
   // Stato per triggerare re-render solo quando necessario (es. mostrare vincitore)
   const [, setRender] = useState(0);
 
-  // Ref per l'immagine di sfondo
+  // Ref per l'immagine di sfondo e per lo sprite
   const backgroundImageRef = useRef(null);
+  const spriteImageRef = useRef(null); // Nuovo ref per lo sprite
 
   useEffect(() => {
     socketInitializer();
-    preloadBackgroundImage();
+    preloadImages();
     // Pulizia socket alla disconnessione del componente
     return () => {
       if (socket) socket.disconnect();
@@ -80,12 +81,19 @@ export default function Home() {
     });
   };
 
-  const preloadBackgroundImage = () => {
+  const preloadImages = () => {
+    // Precarica l'immagine di sfondo
     const background = new Image();
     background.src = "/background.png";
     background.onload = () => {
       backgroundImageRef.current = background;
-      draw(); // Inizia il rendering una volta caricata l'immagine
+      // Precarica lo sprite
+      const sprite = new Image();
+      sprite.src = "/fax2.webp";
+      sprite.onload = () => {
+        spriteImageRef.current = sprite;
+        draw(); // Inizia il rendering una volta caricate le immagini
+      };
     };
   };
 
@@ -93,9 +101,9 @@ export default function Home() {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
 
-    const render = () => {
-      if (!backgroundImageRef.current) {
-        requestAnimationFrame(render);
+    const renderFrame = () => {
+      if (!backgroundImageRef.current || !spriteImageRef.current) {
+        requestAnimationFrame(renderFrame);
         return;
       }
 
@@ -112,17 +120,16 @@ export default function Home() {
       );
 
       if (gameActiveRef.current) {
-        // Disegna l'oggetto mobile
-        context.beginPath();
-        context.arc(
-          objectPositionRef.current.x,
-          objectPositionRef.current.y,
-          10,
-          0,
-          2 * Math.PI
+        // Disegna lo sprite invece del cerchio blu
+        const spriteWidth = 64; // Regola la larghezza desiderata
+        const spriteHeight = 64; // Regola l'altezza desiderata
+        context.drawImage(
+          spriteImageRef.current,
+          objectPositionRef.current.x - spriteWidth / 2,
+          objectPositionRef.current.y - spriteHeight / 2,
+          spriteWidth,
+          spriteHeight
         );
-        context.fillStyle = "blue";
-        context.fill();
       }
 
       // Disegna i colpi
@@ -138,10 +145,10 @@ export default function Home() {
         context.fillText(shot.username, shot.x + 8, shot.y - 8);
       });
 
-      requestAnimationFrame(render);
+      requestAnimationFrame(renderFrame);
     };
 
-    render();
+    renderFrame();
   };
 
   const handleResetGame = () => {
