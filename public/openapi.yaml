@@ -188,7 +188,8 @@ components:
         - error
 
   securitySchemes:
-    TokenAuth:
+    BearerAuth:
       type: apiKey
       in: header
       name: Authorization
+      description: "Insert the token you get from the join call. Format: 'Bearer <token>'"

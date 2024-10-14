@@ -10,13 +10,56 @@ const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-const players = {}; // Memorizza i dati dei giocatori
+let players = {}; // Memorizza i dati dei giocatori
 let gameActive = true;
+let requestCounts = {};
 let winner = null;
 let objectPosition = { x: 400, y: 300 }; // Posizione iniziale del bersaglio
 
+const rateLimitMiddleware = (milliseconds, maxRequests) => {
+  return (req, res, next) => {
+    const player = players[req.token];
+
+    if (!player) {
+      return res
+        .status(400)
+        .json({ error: "Token non associato a un giocatore" });
+    }
+    const rateLimitKey = player + "_" + req.path;
+
+    const currentTime = Date.now();
+    const playerRequests = requestCounts[rateLimitKey] || [];
+
+    // Rimuove le richieste più vecchie del periodo di rate limit
+    requestCounts[rateLimitKey] = playerRequests.filter(
+      (timestamp) => currentTime - timestamp < milliseconds
+    );
+
+    if (requestCounts[rateLimitKey].length >= maxRequests) {
+      const waitTime = Math.ceil(
+        (milliseconds - (currentTime - requestCounts[player][0])) / 1000
+      ); // Tempo di attesa in secondi
+
+      // Imposta l'intestazione Retry-After
+      res.set("Retry-After", waitTime.toString());
+
+      return res.status(429).json({
+        error: "Troppe richieste. Attendi prima di riprovare.",
+        retryAfter: waitTime,
+      });
+    }
+
+    // Aggiunge il timestamp della richiesta corrente
+    requestCounts[rateLimitKey].push(currentTime);
+    next();
+  };
+};
+
 function resetGame() {
+  players = {};
   gameActive = true;
+  requestCounts = {};
+  winner = null;
   objectPosition = { x: 400, y: 300 }; // Esempio di reset della posizione
   console.log("Il gioco è stato resettato");
 }
@@ -163,111 +206,90 @@ app.prepare().then(() => {
     res.status(200).json({ token, username, color });
   });
 
-  server.post("/api/fire", extractToken, (req, res) => {
-    const { x, y } = req.body;
+  server.post(
+    "/api/fire",
+    extractToken,
+    rateLimitMiddleware(1000, 5),
+    (req, res) => {
+      const { x, y } = req.body;
 
-    if (x == null || y == null) {
-      return res.status(400).json({ error: "Coordinate richieste" });
-    }
+      if (x == null || y == null) {
+        return res.status(400).json({ error: "Coordinate richieste" });
+      }
 
-    const player = players[req.token];
+      const player = players[req.token];
 
-    if (!player) {
-      return res.status(400).json({ error: "Token non valido" });
-    }
+      if (!player) {
+        return res.status(400).json({ error: "Token non valido" });
+      }
 
-    if (!gameActive) {
-      return res
-        .status(200)
-        .json({ message: "Il gioco è terminato", success: false });
-    }
+      if (!gameActive) {
+        return res
+          .status(200)
+          .json({ message: "Il gioco è terminato", success: false });
+      }
 
-    // Crea un oggetto per il colpo
-    const shot = {
-      x,
-      y,
-      username: player.username,
-      color: player.color,
-      timestamp: Date.now(),
-    };
-
-    // Emette il colpo al client
-    io.emit("newShot", shot);
-
-    // Controlla se il colpo ha colpito il bersaglio
-    let hit = false;
-    if (checkHit({ x, y }, objectPosition)) {
-      gameActive = false;
-      winner = player.username;
-      console.log(`Il giocatore ${player.username} ha vinto!`, req.token);
-      io.emit("gameOver", { winner });
-      hit = true;
-      // reset game status after 60 seconds of inactivity
-      setTimeout(resetGame, 60000);
-    }
-
-    // Risponde al giocatore con informazioni sull'esito
-    if (hit) {
-      res
-        .status(200)
-        .json({ message: "Colpito! Hai vinto!", success: true, hit: true });
-    } else {
-      res.status(200).json({
-        message: "Hai mancato il bersaglio.",
-        success: true,
-        hit: false,
-      });
-    }
-  });
-
-  const targetRequestTimes = {}; // Memorizza l'ultimo tempo di richiesta per ogni IP
-
-  // Endpoint API per ottenere la posizione attuale del bersaglio con rate limiting e ritardo
-  server.get("/api/target", extractToken, (req, res) => {
-    const player = players[req.token];
-
-    if (!player) {
-      return res.status(400).json({ error: "Token non valido" });
-    }
-
-    const currentTime = Date.now();
-    const lastRequestTime = targetRequestTimes[req.token] || 0;
-    const timeSinceLastRequest = currentTime - lastRequestTime;
-
-    const rateLimitWindow = 2000; // 2000ms = 2 secondi
-
-    // Controlla se il client deve attendere prima di fare una nuova richiesta
-    if (timeSinceLastRequest < rateLimitWindow) {
-      const waitTime = Math.ceil(
-        (rateLimitWindow - timeSinceLastRequest) / 1000
-      ); // Tempo di attesa in secondi
-
-      // Imposta l'intestazione Retry-After
-      res.set("Retry-After", waitTime.toString());
-
-      return res.status(429).json({
-        error: "Troppe richieste. Attendi prima di riprovare.",
-        retryAfter: waitTime,
-      });
-    }
-
-    targetRequestTimes[req.token] = currentTime;
-
-    // Salva la posizione attuale
-    const currentPosition = { x: objectPosition.x, y: objectPosition.y };
-
-    // Imposta un ritardo nella risposta
-    setTimeout(() => {
-      // Aggiungi rumore alle coordinate
-      const noiseLevel = 10; // Puoi regolare questo valore
-      const noisyPosition = {
-        x: currentPosition.x + (Math.random() * noiseLevel - noiseLevel / 2),
-        y: currentPosition.y + (Math.random() * noiseLevel - noiseLevel / 2),
+      // Crea un oggetto per il colpo
+      const shot = {
+        x,
+        y,
+        username: player.username,
+        color: player.color,
+        timestamp: Date.now(),
       };
 
-      res.status(200).json(noisyPosition);
-    }, 100);
-  });
+      // Emette il colpo al client
+      io.emit("newShot", shot);
+
+      // Controlla se il colpo ha colpito il bersaglio
+      let hit = false;
+      if (checkHit({ x, y }, objectPosition)) {
+        gameActive = false;
+        winner = player.username;
+        console.log(`Il giocatore ${player.username} ha vinto!`, req.token);
+        io.emit("gameOver", { winner });
+        hit = true;
+        // reset game status after 60 seconds of inactivity
+        setTimeout(resetGame, 60000);
+      }
+
+      // Risponde al giocatore con informazioni sull'esito
+      if (hit) {
+        res
+          .status(200)
+          .json({ message: "Colpito! Hai vinto!", success: true, hit: true });
+      } else {
+        res.status(200).json({
+          message: "Hai mancato il bersaglio.",
+          success: true,
+          hit: false,
+        });
+      }
+    }
+  );
+
+  // Endpoint API per ottenere la posizione attuale del bersaglio con rate limiting e ritardo
+  server.get(
+    "/api/target",
+    extractToken,
+    rateLimitMiddleware(1000, 1),
+    (req, res) => {
+      // Salva la posizione attuale
+      const currentPosition = { x: objectPosition.x, y: objectPosition.y };
+
+      // Imposta un ritardo nella risposta
+      setTimeout(() => {
+        // Aggiungi rumore alle coordinate
+        const noiseLevel = 10; // Puoi regolare questo valore
+        const noisyPosition = {
+          x: currentPosition.x + (Math.random() * noiseLevel - noiseLevel / 2),
+          y: currentPosition.y + (Math.random() * noiseLevel - noiseLevel / 2),
+        };
+
+        res.status(200).json(noisyPosition);
+      }, 100);
+    }
+  );
 
   // Servizio delle pagine Next.js
   server.get("*", (req, res) => {
