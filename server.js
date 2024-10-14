@@ -310,20 +310,13 @@ app.prepare().then(() => {
 
     // Gestisce il reset del gioco
     socket.on("resetGame", () => {
+      existingUsernames.clear();
       gameActive = true;
       winner = null;
       objectPosition = { x: 400, y: 300 };
       objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
       handleGameEnd();
       io.emit("gameReset");
-    });
-
-    // Handle player disconnection
-    socket.on("disconnect", () => {
-      // Assuming you have a way to map socket to token
-      const token = socket.token;
-      deletePlayer(token);
-      console.log(`Player with token ${token} disconnected`);
     });
   });
 
