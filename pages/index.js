@@ -168,14 +168,32 @@ export default function Home() {
           alignItems: "center",
         }}
       >
-        <a
-          href="/openapi.yaml"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ marginBottom: "10px" }}
+        <p
+          style={{
+            fontSize: "18px",
+            color: "#333",
+            backgroundColor: "#f0f0f0",
+            padding: "10px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+            marginBottom: "20px",
+            width: "80ch",
+            // increase line height for better readability
+            lineHeight: "1.6",
+          }}
         >
-          Read the OpenAPI Specification in order to start playing the game!
-        </a>
+          Join the game via API (
+          <a
+            href="/openapi.yaml"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ marginBottom: "10px", color: "#0070f3" }}
+          >
+            OpenAPI specs here
+          </a>
+          ), get a token, and shoot at a moving target by sending API requests
+          with X, Y coordinates. Hit the target first to win.
+        </p>
 
         <canvas
           ref={canvasRef}
@@ -190,7 +208,19 @@ export default function Home() {
       {!gameActiveRef.current && (
         <button
           onClick={handleResetGame}
-          style={{ fontSize: "16px", padding: "10px 20px" }}
+          style={{
+            fontSize: "16px",
+            padding: "10px 20px",
+            backgroundColor: "#4CAF50",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+            transition: "background-color 0.3s ease",
+          }}
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = "#4CAF50")}
         >
           Riavvia Gioco
         </button>
