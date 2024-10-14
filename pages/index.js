@@ -31,7 +31,7 @@ export default function Home() {
   }, []);
 
   const socketInitializer = () => {
-    socket = io();
+    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000");
 
     socket.on("connect", () => {
       console.log("Connesso al server");

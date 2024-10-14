@@ -192,7 +192,12 @@ let objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
 app.prepare().then(() => {
   const server = express();
   const httpServer = http.createServer(server);
-  const io = socketIo(httpServer);
+  const io = socketIo(httpServer, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
+  });
 
   server.use(express.json()); // Per il parsing di application/json
 
