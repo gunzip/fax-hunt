@@ -25,7 +25,7 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
         .status(400)
         .json({ error: "Token non associato a un giocatore" });
     }
-    const rateLimitKey = player + "_" + req.path;
+    const rateLimitKey = `${player.username}_${req.path}`;
 
     const currentTime = Date.now();
     const playerRequests = requestCounts[rateLimitKey] || [];
@@ -216,6 +216,12 @@ app.prepare().then(() => {
     extractToken,
     rateLimitMiddleware(1000, 5),
     (req, res) => {
+      if (!gameActive) {
+        return res
+          .status(200)
+          .json({ message: "Il gioco è terminato", success: false });
+      }
+
       const { x, y } = req.body;
 
       if (x == null || y == null) {
@@ -226,12 +232,6 @@ app.prepare().then(() => {
 
       if (!player) {
         return res.status(400).json({ error: "Token non valido" });
-      }
-
-      if (!gameActive) {
-        return res
-          .status(200)
-          .json({ message: "Il gioco è terminato", success: false });
       }
 
       // Crea un oggetto per il colpo
@@ -317,6 +317,14 @@ app.prepare().then(() => {
       handleGameEnd();
       io.emit("gameReset");
     });
+
+    // Handle player disconnection
+    socket.on("disconnect", () => {
+      // Assuming you have a way to map socket to token
+      const token = socket.token;
+      deletePlayer(token);
+      console.log(`Player with token ${token} disconnected`);
+    });
   });
 
   // Aggiorna la posizione del bersaglio periodicamente
@@ -325,7 +333,7 @@ app.prepare().then(() => {
       updateObjectPosition();
       io.emit("objectPosition", objectPosition);
     }
-  }, 20); // Aggiorna ogni 20ms per un movimento più fluido
+  }, 50);
 
   const PORT = process.env.PORT || 3000;
 
