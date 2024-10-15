@@ -54,12 +54,15 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
 };
 
 // Funzioni di gioco
+
 function resetGame() {
   players = {};
+  existingUsernames.clear();
   gameActive = true;
   requestCounts = {};
   winner = null;
-  objectPosition = { x: 400, y: 300 }; // Reset della posizione
+  objectPosition = { x: 400, y: 300 };
+  objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
   console.log("Il gioco è stato resettato");
 }
 
@@ -363,11 +366,7 @@ io.on("connection", (socket) => {
 
   // Gestisce il reset del gioco
   socket.on("resetGame", () => {
-    existingUsernames.clear();
-    gameActive = true;
-    winner = null;
-    objectPosition = { x: 400, y: 300 };
-    objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
+    resetGame();
     handleGameEnd();
     io.emit("gameReset");
   });
