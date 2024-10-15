@@ -1,9 +1,7 @@
 // pages/index.js
 
 import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
 
-let socket;
 export default function Home() {
   const canvasRef = useRef(null);
   const objectPositionRef = useRef({ x: 400, y: 300 });
@@ -15,17 +13,20 @@ export default function Home() {
   const spriteImageRef = useRef(null);
   const targetPosition = useRef({ x: 400, y: 300 });
   const lastUpdateTime = useRef(Date.now());
+  const wsRef = useRef(null); // Reference to WebSocket instance
 
   useEffect(() => {
-    // disable use of console
+    // Disable console and fetch to prevent cheating or unauthorized access
     console.log = () => {};
     window.fetch = () => {};
 
-    socketInitializer();
+    initializeWebSocket();
     preloadImages();
+
     return () => {
-      if (socket) socket.disconnect();
+      if (wsRef.current) wsRef.current.close();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -49,46 +50,90 @@ export default function Home() {
     };
   }, []);
 
-  const socketInitializer = () => {
-    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000");
-    socket.on("connect", () => {
-      console.log("Connesso al server");
-    });
+  const initializeWebSocket = () => {
+    // Define the WebSocket URL
+    const wsUrl = process.env.NEXT_PUBLIC_SOCKET_URL || `ws://localhost:4000`;
 
-    socket.on("newShot", (shot) => {
-      shotsRef.current.push(shot);
+    // Initialize WebSocket connection
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("Connected to WebSocket server");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message);
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+      // Optionally implement reconnection logic here
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      ws.close();
+    };
+  };
+
+  const handleWebSocketMessage = (message) => {
+    switch (message.type) {
+      case "newShot":
+        handleNewShot(message.data);
+        break;
+      case "objectPosition":
+        handleObjectPosition(message.data);
+        break;
+      case "gameOver":
+        handleGameOver(message.data);
+        break;
+      case "gameReset":
+        handleGameReset(message.data);
+        break;
+      default:
+        console.warn("Unknown message type:", message.type);
+    }
+  };
+
+  const handleNewShot = (shot) => {
+    shotsRef.current.push(shot);
+    setRender((prev) => prev + 1);
+    const laserSound = document.getElementById("laserSound");
+    if (laserSound) laserSound.play();
+    setTimeout(() => {
+      shotsRef.current = shotsRef.current.filter((s) => s !== shot);
       setRender((prev) => prev + 1);
-      const laserSound = document.getElementById("laserSound");
-      laserSound.play();
-      setTimeout(() => {
-        shotsRef.current = shotsRef.current.filter((s) => s !== shot);
-        setRender((prev) => prev + 1);
-      }, 1000);
-    });
+    }, 1000);
+  };
 
-    socket.on("objectPosition", (position) => {
-      targetPosition.current = position;
-      lastUpdateTime.current = Date.now();
-    });
+  const handleObjectPosition = (position) => {
+    targetPosition.current = position;
+    lastUpdateTime.current = Date.now();
+  };
 
-    socket.on("gameOver", ({ winner }) => {
-      const explosion = document.getElementById("explosion");
-      explosion.play();
-      const winning = document.getElementById("winning");
-      winning.play();
-      gameActiveRef.current = false;
-      winnerRef.current = winner;
-      setRender((prev) => prev + 1);
-    });
+  const handleGameOver = ({ winner }) => {
+    const explosion = document.getElementById("explosion");
+    const winning = document.getElementById("winning");
+    if (explosion) explosion.play();
+    if (winning) winning.play();
+    gameActiveRef.current = false;
+    winnerRef.current = winner;
+    setRender((prev) => prev + 1);
+  };
 
-    socket.on("gameReset", () => {
-      gameActiveRef.current = true;
-      winnerRef.current = null;
-      shotsRef.current = [];
-      objectPositionRef.current = { x: 400, y: 300 };
-      gameActiveRef.current = true;
-      setRender((prev) => prev + 1);
-    });
+  const handleGameReset = (data) => {
+    gameActiveRef.current = true;
+    winnerRef.current = null;
+    shotsRef.current = [];
+    objectPositionRef.current = { x: 400, y: 300 };
+    targetPosition.current = { x: 400, y: 300 };
+    setRender((prev) => prev + 1);
   };
 
   const preloadImages = () => {
@@ -164,7 +209,9 @@ export default function Home() {
   };
 
   const handleResetGame = () => {
-    socket.emit("resetGame");
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "resetGame", data: {} }));
+    }
   };
 
   return (
