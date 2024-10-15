@@ -17,6 +17,10 @@ export default function Home() {
   const lastUpdateTime = useRef(Date.now());
 
   useEffect(() => {
+    // disable use of console
+    console.log = () => {};
+    window.fetch = () => {};
+
     socketInitializer();
     preloadImages();
     return () => {

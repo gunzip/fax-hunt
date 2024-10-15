@@ -353,8 +353,8 @@ app.prepare().then(() => {
       // objectVelocity.vx += Math.random() * 2 - 1; // Cambia la velocità tra -1 e 1
       // objectVelocity.vy += Math.random() * 2 - 1;
 
-      objectVelocity.vx += Math.random() * 10 - 8;
-      objectVelocity.vy += Math.random() * 10 - 8;
+      objectVelocity.vx += Math.random() * 40 - 20;
+      objectVelocity.vy += Math.random() * 40 - 20;
 
       // Limita la velocità massima
       objectVelocity.vx = Math.max(-15, Math.min(15, objectVelocity.vx));
@@ -366,12 +366,16 @@ app.prepare().then(() => {
     objectPosition.y += objectVelocity.vy;
 
     // Controlla le collisioni con i bordi del canvas (800x600)
-    if (objectPosition.x <= 10 || objectPosition.x >= 790) {
+    if (objectPosition.x <= 15 || objectPosition.x >= 780) {
       objectVelocity.vx = -objectVelocity.vx; // Inverte la velocità X
     }
-    if (objectPosition.y <= 10 || objectPosition.y >= 590) {
+    if (objectPosition.y <= 15 || objectPosition.y >= 580) {
       objectVelocity.vy = -objectVelocity.vy; // Inverte la velocità Y
     }
+
+    console.log(
+      `Posizione del bersaglio: ${objectPosition.x}, ${objectPosition.y}`
+    );
   }
 
   // Funzione per verificare se un colpo ha colpito il bersaglio
