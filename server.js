@@ -243,7 +243,7 @@ app.post("/api/configure", (req, res) => {
 app.post(
   "/api/fire",
   extractToken,
-  rateLimitMiddleware(1000, 2),
+  rateLimitMiddleware(2000, 1),
   (req, res) => {
     if (!gameActive) {
       return res

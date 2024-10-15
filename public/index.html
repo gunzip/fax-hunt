@@ -268,7 +268,8 @@
 
         // Display Winner
         function displayWinner(winner) {
-          winnerMessage.textContent = `${winner} vince il gioco!`;
+          const elapsedTime = getElapsedTime();
+          winnerMessage.textContent = `${winner} vince il gioco in ${elapsedTime}!`;
           winnerMessage.style.display = "block";
         }
 
@@ -287,8 +288,22 @@
           canvas.addEventListener("mouseover", handleEvent);
         }
 
+        function getElapsedTime() {
+          // Step 2: Calculate elapsed time
+          let elapsedTime = Date.now() - gameStartTime;
+
+          // Step 3: Format elapsed time
+          let seconds = Math.floor(elapsedTime / 1000);
+          let minutes = Math.floor(seconds / 60);
+          seconds = seconds % 60;
+
+          // Step 4: Return elapsed time
+          return `${minutes}m ${seconds}s`;
+        }
+
         // Initialize Everything
         function init() {
+          let gameStartTime = Date.now();
           socketInitializer();
           preloadImages();
           preventCanvasEvents();
