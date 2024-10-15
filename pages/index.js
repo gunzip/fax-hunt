@@ -86,6 +86,7 @@ export default function Home() {
       winnerRef.current = null;
       shotsRef.current = [];
       objectPositionRef.current = { x: 400, y: 300 };
+      gameActiveRef.current = true;
       setRender((prev) => prev + 1);
     });
   };
