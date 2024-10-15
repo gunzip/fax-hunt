@@ -397,6 +397,8 @@ setInterval(() => {
   }
 }, 50);
 
+io.emit("updateUserList", Object.values(players));
+
 // send userList to all clients
 setInterval(() => {
   io.emit("updateUserList", Object.values(players));
