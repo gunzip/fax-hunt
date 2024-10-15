@@ -108,6 +108,7 @@
         let backgroundImage = null;
         let spriteImage = null;
         let lastUpdateTime = Date.now();
+        let gameStartTime = Date.now();
 
         // Disable console and fetch
         console.log = function () {};
@@ -303,7 +304,7 @@
 
         // Initialize Everything
         function init() {
-          let gameStartTime = Date.now();
+          gameStartTime = Date.now();
           socketInitializer();
           preloadImages();
           preventCanvasEvents();
