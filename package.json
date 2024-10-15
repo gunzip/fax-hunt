@@ -3,12 +3,10 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "node server.js",
-    "start": "NODE_ENV=production node server.js",
-    "build": "next build"
+    "start": "NODE_ENV=production node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "next": "^13.4.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "socket.io": "^4.7.2",

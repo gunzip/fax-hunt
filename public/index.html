@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gioco di Tiro al Bersaglio</title>
+    <!-- Socket.IO Client -->
+    <script
+      src="https://cdn.socket.io/4.5.4/socket.io.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      body {
+        text-align: center;
+        font-family: Arial, sans-serif;
+        background-color: #fafafa;
+        margin: 0;
+        padding: 20px;
+      }
+      canvas {
+        border: 1px solid black;
+        cursor: crosshair;
+      }
+      .info {
+        font-size: 18px;
+        color: #333;
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        width: 80%;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+      }
+      .info a {
+        color: #0070f3;
+        text-decoration: none;
+      }
+      .info a:hover {
+        text-decoration: underline;
+      }
+      button {
+        font-size: 16px;
+        padding: 10px 20px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      h1 {
+        color: #4caf50;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Audio Elements -->
+    <audio id="laserSound" src="/laser-shot.mp3" preload="auto"></audio>
+    <audio id="winning" src="/winning.mp3" preload="auto"></audio>
+    <audio id="explosion" src="/explosion.mp3" preload="auto"></audio>
+
+    <!-- Information Section -->
+    <div class="info">
+      Join the game via API (
+      <a href="/openapi.yaml" target="_blank" rel="noopener noreferrer">
+        OpenAPI specs here
+      </a>
+      ), get a token, and shoot at a moving target by sending API requests with
+      X, Y coordinates. Hit the target first to win.
+    </div>
+
+    <!-- Canvas Element -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- Winner Message -->
+    <h1 id="winnerMessage" style="display: none"></h1>
+
+    <!-- Reset Button -->
+    <button id="resetButton" style="display: none">Reset Game</button>
+
+    <script>
+      (function () {
+        // Initialize Variables
+        const canvas = document.getElementById("gameCanvas");
+        const context = canvas.getContext("2d");
+        const laserSound = document.getElementById("laserSound");
+        const winningSound = document.getElementById("winning");
+        const explosionSound = document.getElementById("explosion");
+        const winnerMessage = document.getElementById("winnerMessage");
+        const resetButton = document.getElementById("resetButton");
+
+        let socket = null;
+        let objectPosition = { x: 400, y: 300 };
+        let targetPosition = { x: 400, y: 300 };
+        let shots = [];
+        let gameActive = true;
+        let winner = null;
+        let backgroundImage = null;
+        let spriteImage = null;
+        let lastUpdateTime = Date.now();
+
+        // Disable console and fetch
+        console.log = function () {};
+        window.fetch = function () {};
+
+        // Initialize Socket.IO
+        function socketInitializer() {
+          const socketUrl = "http://localhost:3000"; // Update if necessary
+          socket = io(socketUrl);
+
+          socket.on("connect", () => {
+            console.log("Connesso al server");
+          });
+
+          socket.on("newShot", (shot) => {
+            shots.push(shot);
+            playLaserSound();
+            setTimeout(() => {
+              shots = shots.filter((s) => s !== shot);
+            }, 1000);
+            draw(); // Trigger redraw
+          });
+
+          socket.on("objectPosition", (position) => {
+            targetPosition = position;
+            lastUpdateTime = Date.now();
+            draw(); // Trigger redraw
+          });
+
+          socket.on("gameOver", ({ winner }) => {
+            explosionSound.play();
+            winningSound.play();
+            gameActive = false;
+            winner = winner;
+            displayWinner();
+          });
+
+          socket.on("gameReset", () => {
+            gameActive = true;
+            winner = null;
+            shots = [];
+            objectPosition = { x: 400, y: 300 };
+            hideWinner();
+            draw(); // Trigger redraw
+          });
+        }
+
+        // Preload Images
+        function preloadImages() {
+          backgroundImage = new Image();
+          backgroundImage.src = "/background.png";
+          backgroundImage.onload = () => {
+            spriteImage = new Image();
+            spriteImage.src = "/fax2.webp";
+            spriteImage.onload = () => {
+              draw(); // Initial draw after images are loaded
+            };
+          };
+        }
+
+        // Draw Function
+        function draw() {
+          const now = Date.now();
+          const deltaTime = now - lastUpdateTime;
+          const lerpFactor = Math.min(deltaTime / 100, 1);
+
+          // Smoothly interpolate object position
+          objectPosition.x +=
+            (targetPosition.x - objectPosition.x) * lerpFactor;
+          objectPosition.y +=
+            (targetPosition.y - objectPosition.y) * lerpFactor;
+
+          // Clear canvas
+          context.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Draw background
+          if (backgroundImage) {
+            context.drawImage(
+              backgroundImage,
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+          }
+
+          // Draw sprite if game is active
+          if (gameActive && spriteImage) {
+            const spriteWidth = 64;
+            const spriteHeight = 64;
+            context.drawImage(
+              spriteImage,
+              objectPosition.x - spriteWidth / 2,
+              objectPosition.y - spriteHeight / 2,
+              spriteWidth,
+              spriteHeight
+            );
+          }
+
+          // Draw shots
+          shots.forEach((shot) => {
+            context.beginPath();
+            context.arc(shot.x, shot.y, 5, 0, 2 * Math.PI);
+            context.fillStyle = shot.color;
+            context.fill();
+            context.font = "12px Arial";
+            context.fillStyle = "black";
+            context.fillText(shot.username, shot.x + 8, shot.y - 8);
+          });
+
+          requestAnimationFrame(draw);
+        }
+
+        // Play Laser Sound
+        function playLaserSound() {
+          laserSound.currentTime = 0;
+          laserSound.play();
+        }
+
+        // Display Winner
+        function displayWinner() {
+          winnerMessage.textContent = `${winner} vince il gioco!`;
+          winnerMessage.style.display = "block";
+          resetButton.style.display = "inline-block";
+        }
+
+        // Hide Winner Message
+        function hideWinner() {
+          winnerMessage.style.display = "none";
+          resetButton.style.display = "none";
+        }
+
+        // Handle Reset Game
+        function handleResetGame() {
+          if (socket) {
+            socket.emit("resetGame");
+          }
+        }
+
+        // Prevent Canvas Default Events
+        function preventCanvasEvents() {
+          const handleEvent = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          };
+          canvas.addEventListener("click", handleEvent);
+          canvas.addEventListener("mouseover", handleEvent);
+        }
+
+        // Initialize Everything
+        function init() {
+          socketInitializer();
+          preloadImages();
+          preventCanvasEvents();
+
+          // Attach Reset Button Event
+          resetButton.addEventListener("click", handleResetGame);
+
+          // Handle Window Resize if necessary
+          window.addEventListener("resize", draw);
+        }
+
+        // Start Initialization after DOM Content is Loaded
+        document.addEventListener("DOMContentLoaded", init);
+      })();
+    </script>
+  </body>
+</html>
