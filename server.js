@@ -205,6 +205,15 @@ app.use(express.json());
 
 // Endpoint API per unirsi al gioco
 app.post("/api/join", (req, res) => {
+  const MAX_USERS = 10;
+
+  // Check if maximum number of users is reached
+  if (existingUsernames.size >= MAX_USERS) {
+    return res
+      .status(403)
+      .json({ error: "Numero massimo di utenti raggiunto" });
+  }
+
   const token = uuidv4();
   const username = generateUniqueUsername();
   const color = getRandomColor();
