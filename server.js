@@ -64,12 +64,13 @@ function resetGame() {
   objectPosition = { x: 400, y: 300 };
   objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
   console.log("Il gioco è stato resettato");
+  io.emit("gameReset");
 }
 
 function getRandomVelocity() {
   let velocity = 0;
   while (velocity === 0) {
-    velocity = Math.floor(Math.random() * 7) - 3; // Da -3 a 3
+    velocity = Math.floor(Math.random() * 11) - 5;
   }
   return velocity;
 }
@@ -148,11 +149,19 @@ function getRandomElement(arr) {
 
 function generateUniqueUsername() {
   let username;
+  let attempts = 0;
+  const maxAttempts = 1000;
+
   do {
     username = `${getRandomElement(colors)}${getRandomElement(
       animals
     )}${Math.floor(Math.random() * 10)}`;
+    attempts++;
+    if (attempts > maxAttempts) {
+      throw new Error("Impossibile generare un username unico");
+    }
   } while (existingUsernames.has(username));
+
   existingUsernames.add(username);
   return username;
 }
@@ -230,8 +239,17 @@ app.post(
 
     const { x, y } = req.body;
 
-    if (x == null || y == null) {
-      return res.status(400).json({ error: "Coordinate richieste" });
+    if (
+      x == null ||
+      y == null ||
+      typeof x !== "number" ||
+      typeof y !== "number" ||
+      x < 0 ||
+      x > 800 ||
+      y < 0 ||
+      y > 600
+    ) {
+      return res.status(400).json({ error: "Coordinate non valide" });
     }
 
     const player = players[req.token];
@@ -260,8 +278,8 @@ app.post(
       console.log(`Il giocatore ${player.username} ha vinto!`, req.token);
       io.emit("gameOver", { winner });
       hit = true;
-      // Reset game status after 60 seconds of inactivity
-      setTimeout(resetGame, 60000);
+      // Reset game status after 20 seconds of inactivity
+      setTimeout(resetGame, 20000);
     }
 
     // Risponde al giocatore con informazioni sull'esito
@@ -363,13 +381,6 @@ io.on("connection", (socket) => {
 
   // Invia la posizione iniziale del bersaglio
   socket.emit("objectPosition", objectPosition);
-
-  // Gestisce il reset del gioco
-  socket.on("resetGame", () => {
-    resetGame();
-    handleGameEnd();
-    io.emit("gameReset");
-  });
 
   socket.on("disconnect", () => {
     console.log("Un client si è disconnesso");

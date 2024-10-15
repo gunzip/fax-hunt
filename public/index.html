@@ -18,10 +18,16 @@
         margin: 0;
         padding: 20px;
       }
+
       canvas {
         border: 1px solid black;
         cursor: crosshair;
+        width: 100%;
+        height: auto;
+        max-width: 800px;
+        max-height: 600px;
       }
+
       .info {
         font-size: 18px;
         color: #333;
@@ -83,9 +89,6 @@
     <!-- Winner Message -->
     <h1 id="winnerMessage" style="display: none"></h1>
 
-    <!-- Reset Button -->
-    <button id="resetButton" style="display: none">Reset Game</button>
-
     <script>
       (function () {
         // Initialize Variables
@@ -95,7 +98,6 @@
         const winningSound = document.getElementById("winning");
         const explosionSound = document.getElementById("explosion");
         const winnerMessage = document.getElementById("winnerMessage");
-        const resetButton = document.getElementById("resetButton");
 
         let socket = null;
         let objectPosition = { x: 400, y: 300 };
@@ -120,6 +122,16 @@
             console.log("Connesso al server");
           });
 
+          socket.on("connect_error", (error) => {
+            console.error(
+              "Errore di connessione al server Socket.IO: " + error.message
+            );
+          });
+
+          socket.on("error", (errorMessage) => {
+            console.error("Errore: " + errorMessage);
+          });
+
           socket.on("newShot", (shot) => {
             shots.push(shot);
             playLaserSound();
@@ -136,19 +148,15 @@
           });
 
           socket.on("gameOver", ({ winner }) => {
-            explosionSound.play();
-            winningSound.play();
+            playExplosionSound();
+            playWinningSound();
             gameActive = false;
             displayWinner(winner);
           });
 
           socket.on("gameReset", () => {
-            gameActive = true;
-            winner = null;
-            shots = [];
-            objectPosition = { x: 400, y: 300 };
-            hideWinner();
-            draw(); // Trigger redraw
+            // reload page
+            window.location.reload();
           });
         }
 
@@ -169,9 +177,11 @@
         function draw() {
           const now = Date.now();
           const deltaTime = now - lastUpdateTime;
+          lastUpdateTime = now;
+
           const lerpFactor = Math.min(deltaTime / 100, 1);
 
-          // Smoothly interpolate object position
+          // Interpolazione della posizione dell'oggetto
           objectPosition.x +=
             (targetPosition.x - objectPosition.x) * lerpFactor;
           objectPosition.y +=
@@ -220,28 +230,51 @@
 
         // Play Laser Sound
         function playLaserSound() {
-          laserSound.currentTime = 0;
-          laserSound.play();
+          if (laserSound.readyState >= 2) {
+            // HAVE_CURRENT_DATA
+            laserSound.currentTime = 0;
+            laserSound.play().catch((error) => {
+              console.error(
+                "Errore nella riproduzione del suono laser:",
+                error
+              );
+            });
+          }
+        }
+
+        function playWinningSound() {
+          if (winningSound.readyState >= 2) {
+            winningSound.currentTime = 0;
+            winningSound.play().catch((error) => {
+              console.error(
+                "Errore nella riproduzione del suono di vittoria:",
+                error
+              );
+            });
+          }
+        }
+
+        function playExplosionSound() {
+          if (explosionSound.readyState >= 2) {
+            explosionSound.currentTime = 0;
+            explosionSound.play().catch((error) => {
+              console.error(
+                "Errore nella riproduzione del suono di esplosione:",
+                error
+              );
+            });
+          }
         }
 
         // Display Winner
         function displayWinner(winner) {
           winnerMessage.textContent = `${winner} vince il gioco!`;
           winnerMessage.style.display = "block";
-          resetButton.style.display = "inline-block";
         }
 
         // Hide Winner Message
         function hideWinner() {
           winnerMessage.style.display = "none";
-          resetButton.style.display = "none";
-        }
-
-        // Handle Reset Game
-        function handleResetGame() {
-          if (socket) {
-            socket.emit("resetGame");
-          }
         }
 
         // Prevent Canvas Default Events
@@ -259,10 +292,6 @@
           socketInitializer();
           preloadImages();
           preventCanvasEvents();
-
-          // Attach Reset Button Event
-          resetButton.addEventListener("click", handleResetGame);
-
           // Handle Window Resize if necessary
           window.addEventListener("resize", draw);
         }
