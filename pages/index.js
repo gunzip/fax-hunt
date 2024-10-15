@@ -28,6 +28,27 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+
+    const handleClick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    if (canvas) {
+      canvas.addEventListener("click", handleClick);
+      canvas.addEventListener("mouseover", handleClick);
+    }
+
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener("click", handleClick);
+        canvas.removeEventListener("mouseover", handleClick);
+      }
+    };
+  }, []);
+
   const socketInitializer = () => {
     socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000");
     socket.on("connect", () => {
