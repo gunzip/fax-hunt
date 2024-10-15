@@ -214,7 +214,7 @@ app.prepare().then(() => {
   server.post(
     "/api/fire",
     extractToken,
-    rateLimitMiddleware(1000, 5),
+    rateLimitMiddleware(1000, 2),
     (req, res) => {
       if (!gameActive) {
         return res
@@ -350,11 +350,15 @@ app.prepare().then(() => {
     // Aggiungi un cambiamento casuale di velocità occasionalmente
     if (Math.random() < 0.05) {
       // 5% di probabilità ogni aggiornamento
-      objectVelocity.vx += Math.random() * 2 - 1; // Cambia la velocità tra -1 e 1
-      objectVelocity.vy += Math.random() * 2 - 1;
+      // objectVelocity.vx += Math.random() * 2 - 1; // Cambia la velocità tra -1 e 1
+      // objectVelocity.vy += Math.random() * 2 - 1;
+
+      objectVelocity.vx += Math.random() * 10 - 8;
+      objectVelocity.vy += Math.random() * 10 - 8;
+
       // Limita la velocità massima
-      objectVelocity.vx = Math.max(-5, Math.min(15, objectVelocity.vx));
-      objectVelocity.vy = Math.max(-5, Math.min(15, objectVelocity.vy));
+      objectVelocity.vx = Math.max(-15, Math.min(15, objectVelocity.vx));
+      objectVelocity.vy = Math.max(-15, Math.min(15, objectVelocity.vy));
     }
 
     // Aggiorna la posizione in base alla velocità
