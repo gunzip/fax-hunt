@@ -8,7 +8,7 @@ const CANVAS_HEIGHT = 600;
 const NUM_SHOTS = 5;
 const SPREAD = 30; // pixels
 const API_DELAY = 500; // milliseconds
-const EXPECTED_DT = 700; // milliseconds
+const EXPECTED_DT = 400; // milliseconds
 
 // State
 let token = "";

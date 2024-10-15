@@ -19,18 +19,18 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
   return (req, res, next) => {
     const player = players[req.token];
 
-    if (!player) {
-      return res
-        .status(400)
-        .json({ error: "Token non associato a un giocatore" });
-    }
-    const rateLimitKey = `${player.username}_${req.path}`;
+    // if (!player) {
+    //   return res
+    //     .status(400)
+    //     .json({ error: "Token non associato a un giocatore" });
+    // }
+    const rateLimitKey = `${player?.username}_${req.path}`;
 
     const currentTime = Date.now();
-    const playerRequests = requestCounts[rateLimitKey] || [];
+    const requests = requestCounts[rateLimitKey] || [];
 
     // Rimuove le richieste più vecchie del periodo di rate limit
-    requestCounts[rateLimitKey] = playerRequests.filter(
+    requestCounts[rateLimitKey] = requests.filter(
       (timestamp) => currentTime - timestamp < milliseconds
     );
 
@@ -204,7 +204,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
 // Endpoint API per unirsi al gioco
-app.post("/api/join", (req, res) => {
+app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
   const MAX_USERS = 10;
 
   // Check if maximum number of users is reached

@@ -3,3 +3,4 @@ node_modules
 shot.sh
 combined.log
 error.log
+.DS_Store
