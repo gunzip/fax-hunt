@@ -113,8 +113,8 @@
 
         // Initialize Socket.IO
         function socketInitializer() {
-          const socketUrl = "http://localhost:3000"; // Update if necessary
-          socket = io(socketUrl);
+          // const socketUrl = "http://localhost:3000"; // Update if necessary
+          socket = io();
 
           socket.on("connect", () => {
             console.log("Connesso al server");
