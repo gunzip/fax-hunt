@@ -7,6 +7,7 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 
 // Variabili di gioco
+let maxSpeed = 30;
 let players = {}; // Memorizza i dati dei giocatori
 let gameActive = true;
 let requestCounts = {};
@@ -166,19 +167,6 @@ function generateUniqueUsername() {
   return username;
 }
 
-function deletePlayer(token) {
-  if (players[token]) {
-    existingUsernames.delete(players[token].username);
-    delete players[token];
-  }
-}
-
-function handleGameEnd() {
-  for (const token in players) {
-    deletePlayer(token);
-  }
-}
-
 function extractToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
@@ -223,6 +211,23 @@ app.post("/api/join", (req, res) => {
   players[token] = { username, color };
 
   res.status(200).json({ token, username, color });
+});
+
+// endopoint that let admins configure max speed
+app.post("/api/configure", (req, res) => {
+  // verify a secret taken from env
+  const secret = process.env.SECRET || "foobar";
+  if (req.headers["x-secret"] !== secret) {
+    return res.status(401).json({ error: "Non autorizzato" });
+  }
+
+  const { speed } = req.body;
+  if (speed == null || typeof speed !== "number" || speed <= 0) {
+    return res.status(400).json({ error: "Velocità non valida" });
+  }
+
+  maxSpeed = speed;
+  res.status(200).json({ message: "Velocità aggiornata con successo" });
 });
 
 // Endpoint API per effettuare un tiro
@@ -339,8 +344,14 @@ function updateObjectPosition() {
     objectVelocity.vy += Math.random() * 40 - 20;
 
     // Limita la velocità massima
-    objectVelocity.vx = Math.max(-15, Math.min(15, objectVelocity.vx));
-    objectVelocity.vy = Math.max(-15, Math.min(15, objectVelocity.vy));
+    objectVelocity.vx = Math.max(
+      -maxSpeed,
+      Math.min(maxSpeed, objectVelocity.vx)
+    );
+    objectVelocity.vy = Math.max(
+      -maxSpeed,
+      Math.min(maxSpeed, objectVelocity.vy)
+    );
   }
 
   // Aggiorna la posizione in base alla velocità
