@@ -372,10 +372,6 @@ app.prepare().then(() => {
     if (objectPosition.y <= 15 || objectPosition.y >= 580) {
       objectVelocity.vy = -objectVelocity.vy; // Inverte la velocità Y
     }
-
-    console.log(
-      `Posizione del bersaglio: ${objectPosition.x}, ${objectPosition.y}`
-    );
   }
 
   // Funzione per verificare se un colpo ha colpito il bersaglio
