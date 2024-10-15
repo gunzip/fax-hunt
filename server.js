@@ -71,7 +71,7 @@ function resetGame() {
 function getRandomVelocity() {
   let velocity = 0;
   while (velocity === 0) {
-    velocity = Math.floor(Math.random() * 30) - 15;
+    velocity = Math.floor(Math.random() * maxSpeed) - Math.floor(maxSpeed / 2);
   }
   return velocity;
 }
