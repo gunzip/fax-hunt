@@ -3,18 +3,18 @@
 const express = require("express");
 const next = require("next");
 const http = require("http");
-const { WebSocketServer } = require("ws"); // Import WebSocketServer from 'ws'
+const socketIo = require("socket.io");
 const { v4: uuidv4 } = require("uuid");
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-let players = {}; // Stores player data
+let players = {}; // Memorizza i dati dei giocatori
 let gameActive = true;
 let requestCounts = {};
 let winner = null;
-let objectPosition = { x: 400, y: 300 }; // Initial target position
+let objectPosition = { x: 400, y: 300 }; // Posizione iniziale del bersaglio
 
 const rateLimitMiddleware = (milliseconds, maxRequests) => {
   return (req, res, next) => {
@@ -23,14 +23,14 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
     if (!player) {
       return res
         .status(400)
-        .json({ error: "Token not associated with a player" });
+        .json({ error: "Token non associato a un giocatore" });
     }
     const rateLimitKey = `${player.username}_${req.path}`;
 
     const currentTime = Date.now();
     const playerRequests = requestCounts[rateLimitKey] || [];
 
-    // Remove requests older than the rate limit period
+    // Rimuove le richieste più vecchie del periodo di rate limit
     requestCounts[rateLimitKey] = playerRequests.filter(
       (timestamp) => currentTime - timestamp < milliseconds
     );
@@ -38,18 +38,18 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
     if (requestCounts[rateLimitKey].length >= maxRequests) {
       const waitTime = Math.ceil(
         (milliseconds - (currentTime - requestCounts[rateLimitKey][0])) / 1000
-      ); // Wait time in seconds
+      ); // Tempo di attesa in secondi
 
-      // Set the Retry-After header
+      // Imposta l'intestazione Retry-After
       res.set("Retry-After", waitTime.toString());
 
       return res.status(429).json({
-        error: "Too many requests. Please wait before retrying.",
+        error: "Troppe richieste. Attendi prima di riprovare.",
         retryAfter: waitTime,
       });
     }
 
-    // Add the current request timestamp
+    // Aggiunge il timestamp della richiesta corrente
     requestCounts[rateLimitKey].push(currentTime);
     next();
   };
@@ -60,19 +60,15 @@ function resetGame() {
   gameActive = true;
   requestCounts = {};
   winner = null;
-  objectPosition = { x: 400, y: 300 }; // Reset position example
-  console.log("The game has been reset");
-  broadcastMessage({
-    type: "gameReset",
-    data: { message: "Game has been reset." },
-  });
+  objectPosition = { x: 400, y: 300 }; // Esempio di reset della posizione
+  console.log("Il gioco è stato resettato");
 }
 
-// Function to get a random velocity between -3 and 3, excluding zero
+// Funzione per ottenere una velocità casuale tra -3 e 3, escluso zero
 function getRandomVelocity() {
   let velocity = 0;
   while (velocity === 0) {
-    velocity = Math.floor(Math.random() * 7) - 3; // From -3 to 3
+    velocity = Math.floor(Math.random() * 7) - 3; // Da -3 a 3
   }
   return velocity;
 }
@@ -176,34 +172,36 @@ function handleGameEnd() {
 function extractToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
-    return res.status(401).json({ error: "Missing authentication token" });
+    return res.status(401).json({ error: "Token di autenticazione mancante" });
   }
 
-  const token = authHeader.split(" ")[1]; // Assuming header is "Bearer <token>"
+  const token = authHeader.split(" ")[1]; // Assumendo che l'header sia del tipo "Bearer <token>"
   if (!token) {
-    return res.status(400).json({ error: "Invalid authentication token" });
+    return res
+      .status(400)
+      .json({ error: "Token di autenticazione non valido" });
   }
 
   req.token = token;
   next();
 }
 
-// Set initial velocity
+// Imposta la velocità iniziale
 let objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
 
 app.prepare().then(() => {
   const server = express();
   const httpServer = http.createServer(server);
+  const io = socketIo(httpServer, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
+  });
 
-  // Initialize WebSocket server
-  const wss = new WebSocketServer({ port: 4000 });
+  server.use(express.json()); // Per il parsing di application/json
 
-  // Set of connected clients
-  const clients = new Set();
-
-  server.use(express.json()); // For parsing application/json
-
-  // API endpoint to join the game
+  // Endpoint API per unirsi al gioco
   server.post("/api/join", (req, res) => {
     const token = uuidv4();
     const username = generateUniqueUsername();
@@ -221,22 +219,22 @@ app.prepare().then(() => {
       if (!gameActive) {
         return res
           .status(200)
-          .json({ message: "The game has ended", success: false });
+          .json({ message: "Il gioco è terminato", success: false });
       }
 
       const { x, y } = req.body;
 
       if (x == null || y == null) {
-        return res.status(400).json({ error: "Missing coordinates" });
+        return res.status(400).json({ error: "Coordinate richieste" });
       }
 
       const player = players[req.token];
 
       if (!player) {
-        return res.status(400).json({ error: "Invalid token" });
+        return res.status(400).json({ error: "Token non valido" });
       }
 
-      // Create a shot object
+      // Crea un oggetto per il colpo
       const shot = {
         x,
         y,
@@ -245,29 +243,29 @@ app.prepare().then(() => {
         timestamp: Date.now(),
       };
 
-      // Broadcast the new shot to all clients
-      broadcastMessage({ type: "newShot", data: shot });
+      // Emette il colpo al client
+      io.emit("newShot", shot);
 
-      // Check if the shot hit the target
+      // Controlla se il colpo ha colpito il bersaglio
       let hit = false;
       if (checkHit({ x, y }, objectPosition)) {
         gameActive = false;
         winner = player.username;
-        console.log(`Player ${player.username} has won!`, req.token);
-        broadcastMessage({ type: "gameOver", data: { winner } });
+        console.log(`Il giocatore ${player.username} ha vinto!`, req.token);
+        io.emit("gameOver", { winner });
         hit = true;
-        // Reset game status after 60 seconds of inactivity
+        // reset game status after 60 seconds of inactivity
         setTimeout(resetGame, 60000);
       }
 
-      // Respond to the player with the outcome
+      // Risponde al giocatore con informazioni sull'esito
       if (hit) {
         res
           .status(200)
-          .json({ message: "Hit! You won!", success: true, hit: true });
+          .json({ message: "Colpito! Hai vinto!", success: true, hit: true });
       } else {
         res.status(200).json({
-          message: "You missed the target.",
+          message: "Hai mancato il bersaglio.",
           success: true,
           hit: false,
         });
@@ -275,19 +273,19 @@ app.prepare().then(() => {
     }
   );
 
-  // API endpoint to get the current target position with rate limiting and delay
+  // Endpoint API per ottenere la posizione attuale del bersaglio con rate limiting e ritardo
   server.get(
     "/api/target",
     extractToken,
     rateLimitMiddleware(1000, 1),
     (req, res) => {
-      // Save the current position
+      // Salva la posizione attuale
       const currentPosition = { x: objectPosition.x, y: objectPosition.y };
 
-      // Set a delay in the response
+      // Imposta un ritardo nella risposta
       setTimeout(() => {
-        // Add noise to the coordinates
-        const noiseLevel = 10; // Adjust this value as needed
+        // Aggiungi rumore alle coordinate
+        const noiseLevel = 10; // Puoi regolare questo valore
         const noisyPosition = {
           x: currentPosition.x + (Math.random() * noiseLevel - noiseLevel / 2),
           y: currentPosition.y + (Math.random() * noiseLevel - noiseLevel / 2),
@@ -298,58 +296,35 @@ app.prepare().then(() => {
     }
   );
 
-  // Handle all other Next.js pages
+  // Servizio delle pagine Next.js
   server.get("*", (req, res) => {
     return handle(req, res);
   });
 
-  // Handle WebSocket connections
-  wss.on("connection", (ws, req) => {
-    console.log("A client has connected");
-    clients.add(ws);
+  // Connessione Socket.IO
+  io.on("connection", (socket) => {
+    console.log("Un client si è connesso");
 
-    // Send the initial object position to the newly connected client
-    ws.send(JSON.stringify({ type: "objectPosition", data: objectPosition }));
+    // Invia la posizione iniziale del bersaglio
+    socket.emit("objectPosition", objectPosition);
 
-    // Handle incoming messages from clients
-    ws.on("message", (message) => {
-      try {
-        const parsed = JSON.parse(message);
-        if (parsed.type === "resetGame") {
-          existingUsernames.clear();
-          gameActive = true;
-          winner = null;
-          objectPosition = { x: 400, y: 300 };
-          objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
-          handleGameEnd();
-          broadcastMessage({
-            type: "gameReset",
-            data: { message: "Game has been reset by a client." },
-          });
-        }
-        // Handle other message types as needed
-      } catch (err) {
-        console.error("Invalid message received:", message);
-      }
-    });
-
-    // Handle client disconnection
-    ws.on("close", () => {
-      console.log("A client has disconnected");
-      clients.delete(ws);
-    });
-
-    ws.on("error", (error) => {
-      console.error("WebSocket error:", error);
-      clients.delete(ws);
+    // Gestisce il reset del gioco
+    socket.on("resetGame", () => {
+      existingUsernames.clear();
+      gameActive = true;
+      winner = null;
+      objectPosition = { x: 400, y: 300 };
+      objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
+      handleGameEnd();
+      io.emit("gameReset");
     });
   });
 
-  // Periodically update the target's position
+  // Aggiorna la posizione del bersaglio periodicamente
   setInterval(() => {
     if (gameActive) {
       updateObjectPosition();
-      broadcastMessage({ type: "objectPosition", data: objectPosition });
+      io.emit("objectPosition", objectPosition);
     }
   }, 50);
 
@@ -357,20 +332,10 @@ app.prepare().then(() => {
 
   httpServer.listen(PORT, (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://localhost:${PORT}`);
+    console.log(`> Pronto su http://localhost:${PORT}`);
   });
 
-  // Function to broadcast messages to all connected clients
-  function broadcastMessage(message) {
-    const messageString = JSON.stringify(message);
-    for (const client of clients) {
-      if (client.readyState === client.OPEN) {
-        client.send(messageString);
-      }
-    }
-  }
-
-  // Function to get a random color
+  // Funzione per ottenere un colore casuale
   function getRandomColor() {
     const letters = "0123456789ABCDEF";
     let color = "#";
@@ -380,40 +345,43 @@ app.prepare().then(() => {
     return color;
   }
 
-  // Function to update the target's position using velocity vectors
+  // Funzione per aggiornare la posizione del bersaglio utilizzando vettori di velocità
   function updateObjectPosition() {
-    // Occasionally add a random change to velocity
+    // Aggiungi un cambiamento casuale di velocità occasionalmente
     if (Math.random() < 0.05) {
-      // 5% chance each update
+      // 5% di probabilità ogni aggiornamento
+      // objectVelocity.vx += Math.random() * 2 - 1; // Cambia la velocità tra -1 e 1
+      // objectVelocity.vy += Math.random() * 2 - 1;
+
       objectVelocity.vx += Math.random() * 40 - 20;
       objectVelocity.vy += Math.random() * 40 - 20;
 
-      // Limit maximum velocity
+      // Limita la velocità massima
       objectVelocity.vx = Math.max(-15, Math.min(15, objectVelocity.vx));
       objectVelocity.vy = Math.max(-15, Math.min(15, objectVelocity.vy));
     }
 
-    // Update position based on velocity
+    // Aggiorna la posizione in base alla velocità
     objectPosition.x += objectVelocity.vx;
     objectPosition.y += objectVelocity.vy;
 
-    // Check for collisions with the canvas edges (800x600)
+    // Controlla le collisioni con i bordi del canvas (800x600)
     objectPosition.x = Math.max(20, Math.min(780, objectPosition.x));
     objectPosition.y = Math.max(20, Math.min(580, objectPosition.y));
 
     if (objectPosition.x === 20 || objectPosition.x === 780) {
-      objectVelocity.vx = -objectVelocity.vx; // Reverse X velocity
+      objectVelocity.vx = -objectVelocity.vx; // Inverte la velocità X
     }
     if (objectPosition.y === 20 || objectPosition.y === 580) {
-      objectVelocity.vy = -objectVelocity.vy; // Reverse Y velocity
+      objectVelocity.vy = -objectVelocity.vy; // Inverte la velocità Y
     }
   }
 
-  // Function to check if a shot hit the target
+  // Funzione per verificare se un colpo ha colpito il bersaglio
   function checkHit(shot, object) {
     const distance = Math.sqrt(
       (shot.x - object.x) ** 2 + (shot.y - object.y) ** 2
     );
-    return distance <= 15; // Adjust the hit radius as needed
+    return distance <= 15; // Regola il raggio di impatto secondo necessità
   }
 });
