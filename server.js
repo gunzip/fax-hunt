@@ -366,10 +366,13 @@ app.prepare().then(() => {
     objectPosition.y += objectVelocity.vy;
 
     // Controlla le collisioni con i bordi del canvas (800x600)
-    if (objectPosition.x <= 20 || objectPosition.x >= 780) {
+    objectPosition.x = Math.max(20, Math.min(780, objectPosition.x));
+    objectPosition.y = Math.max(20, Math.min(580, objectPosition.y));
+
+    if (objectPosition.x === 20 || objectPosition.x === 780) {
       objectVelocity.vx = -objectVelocity.vx; // Inverte la velocità X
     }
-    if (objectPosition.y <= 20 || objectPosition.y >= 580) {
+    if (objectPosition.y === 20 || objectPosition.y === 580) {
       objectVelocity.vy = -objectVelocity.vy; // Inverte la velocità Y
     }
   }
