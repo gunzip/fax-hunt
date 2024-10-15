@@ -139,8 +139,7 @@
             explosionSound.play();
             winningSound.play();
             gameActive = false;
-            winner = winner;
-            displayWinner();
+            displayWinner(winner);
           });
 
           socket.on("gameReset", () => {
@@ -226,7 +225,7 @@
         }
 
         // Display Winner
-        function displayWinner() {
+        function displayWinner(winner) {
           winnerMessage.textContent = `${winner} vince il gioco!`;
           winnerMessage.style.display = "block";
           resetButton.style.display = "inline-block";
