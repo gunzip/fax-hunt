@@ -219,6 +219,8 @@ app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
   const color = getRandomColor();
   players[token] = { username, color };
 
+  io.emit("updateUserList", Object.values(players));
+
   res.status(200).json({ token, username, color });
 });
 
@@ -394,6 +396,11 @@ setInterval(() => {
     io.emit("objectPosition", objectPosition);
   }
 }, 50);
+
+// send userList to all clients
+setInterval(() => {
+  io.emit("updateUserList", Object.values(players));
+}, 10000);
 
 // Connessione Socket.IO
 io.on("connection", (socket) => {

@@ -10,17 +10,27 @@
       src="https://cdn.socket.io/4.5.4/socket.io.min.js"
       crossorigin="anonymous"
     ></script>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
       body {
+        font-family: "Roboto", Arial, sans-serif;
         text-align: center;
         font-family: Arial, sans-serif;
         background-color: #fafafa;
         margin: 0;
         padding: 20px;
+
+        background-image: url("/background.png");
+        background-size: cover;
+        background-position: center;
       }
 
       canvas {
-        border: 1px solid black;
         cursor: crosshair;
         width: 100%;
         height: auto;
@@ -86,8 +96,10 @@
     <!-- Canvas Element -->
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    <!-- Winner Message -->
-    <h1 id="winnerMessage" style="display: none"></h1>
+    <div class="info" id="userList">
+      <p id="users"></p>
+      <p id="winnerMessage"></p>
+    </div>
 
     <script>
       (function () {
@@ -98,6 +110,7 @@
         const winningSound = document.getElementById("winning");
         const explosionSound = document.getElementById("explosion");
         const winnerMessage = document.getElementById("winnerMessage");
+        const usersMessage = document.getElementById("users");
 
         let socket = null;
         let objectPosition = { x: 400, y: 300 };
@@ -105,7 +118,6 @@
         let shots = [];
         let gameActive = true;
         let winner = null;
-        let backgroundImage = null;
         let spriteImage = null;
         let lastUpdateTime = Date.now();
         let gameStartTime = Date.now();
@@ -120,17 +132,22 @@
           socket = io();
 
           socket.on("connect", () => {
-            console.log("Connesso al server");
+            console.log("Connected to server");
           });
 
           socket.on("connect_error", (error) => {
-            console.error(
-              "Errore di connessione al server Socket.IO: " + error.message
-            );
+            console.error("Error connecting to socket: " + error.message);
           });
 
           socket.on("error", (errorMessage) => {
-            console.error("Errore: " + errorMessage);
+            console.error("Error: " + errorMessage);
+          });
+
+          socket.on("updateUserList", (players) => {
+            usersMessage.innerHTML =
+              players.length +
+              " connect user" +
+              (players.length === 1 ? "" : "s");
           });
 
           socket.on("newShot", (shot) => {
@@ -163,14 +180,10 @@
 
         // Preload Images
         function preloadImages() {
-          backgroundImage = new Image();
-          backgroundImage.src = "/background.png";
-          backgroundImage.onload = () => {
-            spriteImage = new Image();
-            spriteImage.src = "/fax2.webp";
-            spriteImage.onload = () => {
-              draw(); // Initial draw after images are loaded
-            };
+          spriteImage = new Image();
+          spriteImage.src = "/fax2.webp";
+          spriteImage.onload = () => {
+            draw(); // Initial draw after images are loaded
           };
         }
 
@@ -190,17 +203,6 @@
 
           // Clear canvas
           context.clearRect(0, 0, canvas.width, canvas.height);
-
-          // Draw background
-          if (backgroundImage) {
-            context.drawImage(
-              backgroundImage,
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-          }
 
           // Draw sprite if game is active
           if (gameActive && spriteImage) {
@@ -235,10 +237,7 @@
             // HAVE_CURRENT_DATA
             laserSound.currentTime = 0;
             laserSound.play().catch((error) => {
-              console.error(
-                "Errore nella riproduzione del suono laser:",
-                error
-              );
+              console.error("Error playing laser sound:", error);
             });
           }
         }
@@ -247,10 +246,7 @@
           if (winningSound.readyState >= 2) {
             winningSound.currentTime = 0;
             winningSound.play().catch((error) => {
-              console.error(
-                "Errore nella riproduzione del suono di vittoria:",
-                error
-              );
+              console.error("Error playing winning sound:", error);
             });
           }
         }
@@ -259,10 +255,7 @@
           if (explosionSound.readyState >= 2) {
             explosionSound.currentTime = 0;
             explosionSound.play().catch((error) => {
-              console.error(
-                "Errore nella riproduzione del suono di esplosione:",
-                error
-              );
+              console.error("Error playing explosion sound:", error);
             });
           }
         }
@@ -270,13 +263,7 @@
         // Display Winner
         function displayWinner(winner) {
           const elapsedTime = getElapsedTime();
-          winnerMessage.textContent = `${winner} vince il gioco in ${elapsedTime}!`;
-          winnerMessage.style.display = "block";
-        }
-
-        // Hide Winner Message
-        function hideWinner() {
-          winnerMessage.style.display = "none";
+          winnerMessage.innerHTML += `<span>${winner} won the game in ${elapsedTime}!</span>`;
         }
 
         // Prevent Canvas Default Events
