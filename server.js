@@ -7,7 +7,8 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 
 // Variabili di gioco
-let maxSpeed = 30;
+let maxSpeed = 60;
+let minSpeed = 30;
 let players = {}; // Memorizza i dati dei giocatori
 let gameActive = true;
 let requestCounts = {};
@@ -71,7 +72,10 @@ function resetGame() {
 function getRandomVelocity() {
   let velocity = 0;
   while (velocity === 0) {
-    velocity = Math.floor(Math.random() * maxSpeed) - Math.floor(maxSpeed / 2);
+    velocity = Math.max(
+      minSpeed,
+      Math.floor(Math.random() * maxSpeed) - Math.floor(maxSpeed / 2)
+    );
   }
   return velocity;
 }
@@ -350,19 +354,8 @@ function getRandomColor() {
 function updateObjectPosition() {
   // Aggiungi un cambiamento casuale di velocità occasionalmente
   if (Math.random() < 0.05) {
-    // 5% di probabilità ogni aggiornamento
-    objectVelocity.vx += Math.random() * 40 - 20;
-    objectVelocity.vy += Math.random() * 40 - 20;
-
-    // Limita la velocità massima
-    objectVelocity.vx = Math.max(
-      -maxSpeed,
-      Math.min(maxSpeed, objectVelocity.vx)
-    );
-    objectVelocity.vy = Math.max(
-      -maxSpeed,
-      Math.min(maxSpeed, objectVelocity.vy)
-    );
+    objectVelocity.vx = getRandomVelocity();
+    objectVelocity.vy = getRandomVelocity();
   }
 
   // Aggiorna la posizione in base alla velocità
