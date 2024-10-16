@@ -44,7 +44,7 @@ const rateLimitMiddleware = (milliseconds, maxRequests) => {
       res.set("Retry-After", waitTime.toString());
 
       return res.status(429).json({
-        error: "Troppe richieste. Attendi prima di riprovare.",
+        error: "Too many requests",
         retryAfter: waitTime,
       });
     }
@@ -65,7 +65,7 @@ function resetGame() {
   winner = null;
   objectPosition = { x: 400, y: 300 };
   objectVelocity = { vx: getRandomVelocity(), vy: getRandomVelocity() };
-  console.log("Il gioco è stato resettato");
+  console.log("Game reset");
   io.emit("gameReset");
 }
 
@@ -163,7 +163,7 @@ function generateUniqueUsername() {
     )}${Math.floor(Math.random() * 10)}`;
     attempts++;
     if (attempts > maxAttempts) {
-      throw new Error("Impossibile generare un username unico");
+      throw new Error("Unable to generate a unique username");
     }
   } while (existingUsernames.has(username));
 
@@ -174,14 +174,14 @@ function generateUniqueUsername() {
 function extractToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
-    return res.status(401).json({ error: "Token di autenticazione mancante" });
+    return res.status(401).json({ error: "Missing Authorization header" });
   }
 
   const token = authHeader.split(" ")[1]; // Assumendo che l'header sia del tipo "Bearer <token>"
   if (!token) {
     return res
       .status(400)
-      .json({ error: "Token di autenticazione non valido" });
+      .json({ error: "Invalid Authorization header format" });
   }
 
   req.token = token;
@@ -215,7 +215,7 @@ app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
   if (existingUsernames.size >= MAX_USERS) {
     return res
       .status(403)
-      .json({ error: "Numero massimo di utenti raggiunto" });
+      .json({ error: "Max number of users reached. Please try again later." });
   }
 
   const token = uuidv4();
@@ -233,16 +233,16 @@ app.post("/api/configure", (req, res) => {
   // verify a secret taken from env
   const secret = process.env.SECRET || "foobar";
   if (req.headers["x-secret"] !== secret) {
-    return res.status(401).json({ error: "Non autorizzato" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const { speed } = req.body;
   if (speed == null || typeof speed !== "number" || speed <= 0) {
-    return res.status(400).json({ error: "Velocità non valida" });
+    return res.status(400).json({ error: "Invalid speed value" });
   }
 
   maxSpeed = speed;
-  res.status(200).json({ message: "Velocità aggiornata con successo" });
+  res.status(200).json({ message: "Speed updated successfully" });
 });
 
 // endopoint that let admins configure max speed
@@ -250,10 +250,10 @@ app.post("/api/reset", (req, res) => {
   // verify a secret taken from env
   const secret = process.env.SECRET || "foobar";
   if (req.headers["x-secret"] !== secret) {
-    return res.status(401).json({ error: "Non autorizzato" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
   resetGame();
-  res.status(200).json({ message: "Gioco resettato con successo" });
+  res.status(200).json({ message: "Game reset successfully" });
 });
 
 // Endpoint API per effettuare un tiro
@@ -263,9 +263,7 @@ app.post(
   rateLimitMiddleware(2000, 1),
   (req, res) => {
     if (!gameActive) {
-      return res
-        .status(200)
-        .json({ message: "Il gioco è terminato", success: false });
+      return res.status(200).json({ message: "Game Over", success: false });
     }
 
     const { x, y } = req.body;
@@ -280,13 +278,13 @@ app.post(
       y < 0 ||
       y > 600
     ) {
-      return res.status(400).json({ error: "Coordinate non valide" });
+      return res.status(400).json({ error: "Invalid shot coordinates" });
     }
 
     const player = players[req.token];
 
     if (!player) {
-      return res.status(400).json({ error: "Token non valido" });
+      return res.status(400).json({ error: "Invalid token" });
     }
 
     // Crea un oggetto per il colpo
@@ -306,7 +304,7 @@ app.post(
     if (checkHit({ x, y }, objectPosition)) {
       gameActive = false;
       winner = player.username;
-      console.log(`Il giocatore ${player.username} ha vinto!`, req.token);
+      console.log(`Player ${player.username} won!`, req.token);
       io.emit("gameOver", { winner });
       hit = true;
       // Reset game status after 20 seconds of inactivity
@@ -315,12 +313,14 @@ app.post(
 
     // Risponde al giocatore con informazioni sull'esito
     if (hit) {
-      res
-        .status(200)
-        .json({ message: "Colpito! Hai vinto!", success: true, hit: true });
+      res.status(200).json({
+        message: "Target hit! You won the game!",
+        success: true,
+        hit: true,
+      });
     } else {
       res.status(200).json({
-        message: "Hai mancato il bersaglio.",
+        message: "Missed the target",
         success: true,
         hit: false,
       });
@@ -408,13 +408,13 @@ setInterval(() => {
 
 // Connessione Socket.IO
 io.on("connection", (socket) => {
-  console.log("Un client si è connesso");
+  console.log("Client connected");
 
   // Invia la posizione iniziale del bersaglio
   socket.emit("objectPosition", objectPosition);
 
   socket.on("disconnect", () => {
-    console.log("Un client si è disconnesso");
+    console.log("Client disconnected");
   });
 });
 
@@ -423,5 +423,5 @@ const PORT = process.env.PORT || 3000;
 
 httpServer.listen(PORT, (err) => {
   if (err) throw err;
-  console.log(`> Pronto su http://localhost:${PORT}`);
+  console.log(`> Ready on http://localhost:${PORT}`);
 });
