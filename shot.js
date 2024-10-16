@@ -2,14 +2,14 @@
 const axios = require("axios");
 
 // Configuration
-// const BASE_URL = "https://fax-hunt.onrender.com";
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "https://fax-hunt.onrender.com";
+// const BASE_URL = "http://localhost:3000";
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const NUM_SHOTS = 5;
 const SPREAD = 30; // pixels
 const API_DELAY = 500; // milliseconds
-const EXPECTED_DT = 400; // milliseconds
+const EXPECTED_DT = 1000; // milliseconds
 
 // State
 let token = "";

@@ -10,6 +10,8 @@ const getClientSecret = require("./src/client-secret");
 
 let maxSpeed = 60;
 let minSpeed = 20;
+let targetArea = 20;
+
 let players = {};
 let gameActive = true;
 let requestCounts = {};
@@ -246,14 +248,25 @@ app.post("/api/configure", (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { speed } = req.body;
-  if (speed == null || typeof speed !== "number" || speed <= 0) {
-    return res.status(400).json({ error: "Invalid speed value" });
+  const { speed, area } = req.body;
+
+  if (speed != null) {
+    if (typeof speed === "number") {
+      maxSpeed = Math.max(minSpeed, speed);
+    } else {
+      res.status(400).json({ error: "Invalid speed configuration" });
+    }
   }
 
-  maxSpeed = speed;
-  console.log(`Speed updated to ${maxSpeed} ${minSpeed}`);
-  res.status(200).json({ message: "Speed updated successfully" });
+  if (area != null) {
+    if (typeof area === "number") {
+      targetArea = Math.max(10, area);
+    } else {
+      res.status(400).json({ error: "Invalid area configuration" });
+    }
+  }
+
+  res.status(200).json({ message: "Configuration updated successfully" });
 });
 
 app.post("/api/reset", (req, res) => {
@@ -389,7 +402,7 @@ function checkHit(shot, object) {
     (shot.x - object.x) ** 2 + (shot.y - object.y) ** 2
   );
   // Check if the shot is within a certain range araound the object
-  return distance <= 30;
+  return distance <= targetArea;
 }
 
 // Aggiorna la posizione del bersaglio periodicamente
