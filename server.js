@@ -72,7 +72,6 @@ function getRandomVelocity() {
       velocity = Math.sign(velocity) * minSpeed;
     }
   }
-  console.log("Velocity: ", velocity);
   return velocity;
 }
 
