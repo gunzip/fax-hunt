@@ -222,11 +222,12 @@ app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
   }
 
   const token = uuidv4();
-  const username = generateUniqueUsername();
+  const username = clientId;
   const color = getRandomColor();
   players[token] = { username, color };
 
   io.emit("updateUserList", Object.values(players));
+  console.log(`Player ${username} joined the game`, token);
 
   res.status(200).json({ token, username, color });
 });
@@ -272,7 +273,7 @@ app.post(
       typeof x !== "number" ||
       typeof y !== "number" ||
       x < 0 ||
-      x > 800 ||
+      x > 1024 ||
       y < 0 ||
       y > 600
     ) {
@@ -363,10 +364,10 @@ function updateObjectPosition() {
   objectPosition.y += objectVelocity.vy;
 
   // Check for collisions with walls
-  objectPosition.x = Math.max(20, Math.min(780, objectPosition.x));
+  objectPosition.x = Math.max(20, Math.min(1000, objectPosition.x));
   objectPosition.y = Math.max(20, Math.min(580, objectPosition.y));
 
-  if (objectPosition.x === 20 || objectPosition.x === 780) {
+  if (objectPosition.x === 20 || objectPosition.x === 1000) {
     objectVelocity.vx = -objectVelocity.vx;
   }
   if (objectPosition.y === 20 || objectPosition.y === 580) {
