@@ -245,6 +245,17 @@ app.post("/api/configure", (req, res) => {
   res.status(200).json({ message: "Velocità aggiornata con successo" });
 });
 
+// endopoint that let admins configure max speed
+app.post("/api/reset", (req, res) => {
+  // verify a secret taken from env
+  const secret = process.env.SECRET || "foobar";
+  if (req.headers["x-secret"] !== secret) {
+    return res.status(401).json({ error: "Non autorizzato" });
+  }
+  resetGame();
+  res.status(200).json({ message: "Gioco resettato con successo" });
+});
+
 // Endpoint API per effettuare un tiro
 app.post(
   "/api/fire",
