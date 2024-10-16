@@ -221,6 +221,15 @@ app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  // if the user is already in the game, return the token
+  for (const [token, player] of Object.entries(players)) {
+    if (player.username === clientId) {
+      return res
+        .status(200)
+        .json({ token, username: clientId, color: player.color });
+    }
+  }
+
   const token = uuidv4();
   const username = clientId;
   const color = getRandomColor();
