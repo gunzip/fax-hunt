@@ -11,6 +11,22 @@ paths:
     post:
       summary: Join the game and receive a token.
       operationId: joinGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID for authentication.
+                secret:
+                  type: string
+                  description: Secret key for authentication.
+              required:
+                - clientId
+                - secret
       responses:
         "200":
           description: Response with token, username, and color.
@@ -18,6 +34,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JoinResponse"
+        "400":
+          description: Invalid request due to missing or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid client secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Max number of users reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error.
           content:

@@ -6,6 +6,8 @@ const socketIo = require("socket.io");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 
+const getClientSecret = require("./src/client-secret");
+
 let maxSpeed = 60;
 let minSpeed = 20;
 let players = {};
@@ -13,6 +15,8 @@ let gameActive = true;
 let requestCounts = {};
 let winner = null;
 let objectPosition = { x: 400, y: 300 };
+
+const serverSecret = process.env.SECRET || "foobar";
 
 // Middleware per il rate limiting
 const rateLimitMiddleware = (milliseconds, maxRequests) => {
@@ -207,6 +211,16 @@ app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
       .json({ error: "Max number of users reached. Please try again later." });
   }
 
+  const { clientId, secret } = req.body;
+  if (!clientId || !secret) {
+    return res.status(400).json({ error: "Invalid join request" });
+  }
+
+  const expectedSecret = getClientSecret(clientId, serverSecret);
+  if (secret !== expectedSecret) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   const token = uuidv4();
   const username = generateUniqueUsername();
   const color = getRandomColor();
@@ -218,8 +232,7 @@ app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
 });
 
 app.post("/api/configure", (req, res) => {
-  const secret = process.env.SECRET || "foobar";
-  if (req.headers["x-secret"] !== secret) {
+  if (req.headers["x-secret"] !== serverSecret) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

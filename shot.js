@@ -20,9 +20,12 @@ let positionsY = [];
 let timestamps = [];
 
 // Join the game
-async function joinGame() {
+async function joinGame(clientId, clientSecret) {
   try {
-    const response = await axios.post(`${BASE_URL}/api/join`, {});
+    const response = await axios.post(`${BASE_URL}/api/join`, {
+      clientId: clientId,
+      secret: clientSecret,
+    });
     token = response.data.token;
     username = response.data.username;
     color = response.data.color;
@@ -222,6 +225,13 @@ async function mainLoop() {
 
 // Start the script
 (async () => {
-  await joinGame();
+  // get clientid and client secret from command line
+  const clientId = process.argv[2];
+  const clientSecret = process.argv[3];
+  if (!clientId || !clientSecret) {
+    console.log("Usage: node shot.js <clientid> <clientsecret>");
+    process.exit(1);
+  }
+  await joinGame(clientId, clientSecret);
   await mainLoop();
 })();
