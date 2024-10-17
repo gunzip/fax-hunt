@@ -63,6 +63,8 @@ paths:
     post:
       summary: Shoot at the target.
       operationId: Fire
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -110,6 +112,8 @@ paths:
     get:
       summary: Get the current position of the target.
       operationId: getTarget
+      security:
+        - BearerAuth: []
       responses:
         "200":
           description: Response with the target's coordinates.
