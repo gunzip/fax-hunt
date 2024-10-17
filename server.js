@@ -118,28 +118,23 @@ app.use(express.json());
 
 // New API Endpoint to generate secrets
 app.post("/api/secret", (req, res) => {
-  const { secret } = req.body;
-  if (!secret) {
-    return res.status(400).json({ error: "Secret is required" });
+  const { secret, clientId } = req.body;
+  if (!secret || !clientId) {
+    return res.status(400).json({ error: "Secret e clientId sono richiesti" });
   }
 
   if (secret !== serverSecret) {
-    return res.status(401).json({ error: "Invalid secret" });
+    return res.status(401).json({ error: "Secret non valido" });
   }
 
-  const clientId = uuidv4();
-  const newSecret = generateSecret();
+  if (existingUsernames.has(clientId)) {
+    return res.status(409).json({ error: "clientId già esistente" });
+  }
 
-  // Optionally, store the clientId and secret in a database or in-memory store
-  // For simplicity, we'll skip storage in this example
+  const newSecret = getClientSecret(clientId, serverSecret);
 
   res.json({ clientId, secret: newSecret });
 });
-
-// Function to generate a random secret
-function generateSecret() {
-  return Math.random().toString(36).substr(2, 10);
-}
 
 app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
   const MAX_USERS = 10;
