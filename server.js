@@ -6,6 +6,7 @@ const socketIo = require("socket.io");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 
+// Import necessary modules
 const getClientSecret = require("./src/client-secret");
 
 let maxSpeed = 60;
@@ -70,7 +71,7 @@ function resetGame() {
 function getRandomVelocity() {
   let velocity = 0;
   while (velocity === 0) {
-    // Set velocity to a valut between -maxSpeed and maxSpeed
+    // Set velocity to a valid between -maxSpeed and maxSpeed
     velocity = Math.floor((Math.random() - 0.5) * 2 * maxSpeed);
 
     // Speed may be negative, but absolute value should be at least minSpeed
@@ -114,6 +115,31 @@ const io = socketIo(httpServer, {
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
+
+// New API Endpoint to generate secrets
+app.post("/api/secret", (req, res) => {
+  const { secret } = req.body;
+  if (!secret) {
+    return res.status(400).json({ error: "Secret is required" });
+  }
+
+  if (secret !== serverSecret) {
+    return res.status(401).json({ error: "Invalid secret" });
+  }
+
+  const clientId = uuidv4();
+  const newSecret = generateSecret();
+
+  // Optionally, store the clientId and secret in a database or in-memory store
+  // For simplicity, we'll skip storage in this example
+
+  res.json({ clientId, secret: newSecret });
+});
+
+// Function to generate a random secret
+function generateSecret() {
+  return Math.random().toString(36).substr(2, 10);
+}
 
 app.post("/api/join", rateLimitMiddleware(60000, 10), (req, res) => {
   const MAX_USERS = 10;
@@ -312,7 +338,7 @@ function checkHit(shot, object) {
   const distance = Math.sqrt(
     (shot.x - object.x) ** 2 + (shot.y - object.y) ** 2
   );
-  // Check if the shot is within a certain range araound the object
+  // Check if the shot is within a certain range around the object
   return distance <= targetArea;
 }
 
