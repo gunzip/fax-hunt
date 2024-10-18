@@ -39,81 +39,74 @@
         border: 1px solid #ece2e2;
       }
 
+      /* General Styling Improvements */
+      body {
+        background-color: #e0f7fa; /* Softer background for overall page */
+      }
+
+      /* Improved Info Section */
       .info {
-        background: linear-gradient(
-          90deg,
-          #4caf50,
-          #2c3e50
-        ); /* Green to dark blue gradient */
-        padding: 20px 25px; /* Increased padding for more space */
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Slightly darker and bigger shadow */
-        color: #f7f7f7; /* Light gray for better readability */
+        background-color: #34495e; /* Deep blue-gray for elegance */
+        padding: 20px 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
+        color: #ecf0f1;
         font-family: "Poppins", sans-serif;
-        font-size: 18px; /* Slightly larger text */
+        font-size: 20px; /* Slightly larger for better readability */
         text-align: center;
-        margin: 20px auto; /* More margin for better spacing */
-        max-width: 600px;
-        line-height: 1.6; /* Improved readability */
+        margin: 20px auto;
+        max-width: 800px; /* Increased width for better spacing */
+        line-height: 1.7;
       }
 
       /* Styling the link */
       .info a {
-        color: #ffd700; /* Gold color for the link */
+        color: #1abc9c; /* Soft turquoise for the link */
         text-decoration: none;
         font-weight: bold;
-        transition: color 0.3s ease, text-decoration 0.3s ease;
+        transition: color 0.3s ease-in-out; /* Smooth transition for hover */
       }
 
       .info a:hover {
-        color: #ffffff; /* White on hover for better contrast */
+        color: #16a085; /* Slightly darker turquoise on hover */
         text-decoration: underline;
       }
 
-      /* Container for the bottom paragraph */
+      /* User List Section */
       #userList {
-        background-color: #2c3e50; /* Darker blue for better contrast */
-        padding: 14px 20px; /* More padding for better readability */
-        border-radius: 25px; /* Smooth, pill-like shape */
-        color: #f7f7f7; /* Light gray for better readability */
+        background-color: #2c3e50; /* Dark blue for a professional feel */
+        padding: 16px 22px;
+        border-radius: 8px;
+        color: #f7f7f7;
         font-family: "Poppins", sans-serif;
-        font-size: 16px; /* Slightly larger text */
+        font-size: 18px; /* Improved readability */
         text-align: center;
-        max-width: 250px; /* Slightly wider for better fit */
-        margin: 30px auto; /* More space between elements */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-        position: relative;
+        max-width: 300px;
+        margin: 40px auto;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Subtle depth with shadow */
       }
 
-      /* Adding a pulse effect to indicate activity */
-      #userList::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        background: rgba(
-          44,
-          62,
-          80,
-          0.2
-        ); /* Dark blue with lower transparency for subtle pulse */
-        transform: translate(-50%, -50%);
-        animation: pulse 2s infinite;
-        z-index: -1;
+      button {
+        font-size: 18px; /* Increased button text size */
+        padding: 12px 24px; /* More padding for a modern button look */
+        background-color: #1abc9c;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+        transition: background-color 0.3s ease-in-out; /* Smooth hover effect */
       }
 
-      @keyframes pulse {
-        0% {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-50%, -50%) scale(1.5);
-          opacity: 0;
-        }
+      button:hover {
+        background-color: #16a085; /* Darker on hover */
+      }
+
+      /* Headings for better contrast */
+      h1 {
+        color: #1abc9c;
+        font-size: 32px;
+        margin-top: 20px;
       }
 
       button {
@@ -143,12 +136,13 @@
 
     <!-- Information Section -->
     <div class="info">
-      Join the game via API (
-      <a href="/openapi.yaml" target="_blank" rel="noopener noreferrer">
-        OpenAPI specs here
-      </a>
-      ), get a token, and shoot at a moving target by sending API requests with
-      X, Y coordinates. Hit the target first to win.
+      Join the game via API (<a
+        href="/openapi.yaml"
+        target="_blank"
+        rel="noopener noreferrer"
+        >OpenAPI specs here</a
+      >), get a token, and shoot at a moving target by sending API requests with
+      X, Y coordinates. Hit the target first to win!
     </div>
 
     <!-- Canvas Element -->
