@@ -3,7 +3,10 @@ name: Deploy to Azure App Service
 on:
   push:
     branches:
-      - main__
+      - main
+
+      # on manual workflow dispatch
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
