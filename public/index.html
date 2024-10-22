@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Gioco di Tiro al Bersaglio</title>
+    <title>Fax Hunter | Target Shooting Game</title>
     <!-- Socket.IO Client -->
     <script
       src="https://cdn.socket.io/4.5.4/socket.io.min.js"
@@ -23,7 +23,7 @@
         font-family: Arial, sans-serif;
         background-color: #fafafa;
         margin: 0;
-        padding: 20px;
+        padding: 10px;
 
         background-image: url("/background.png");
         background-size: cover;
@@ -47,16 +47,20 @@
       /* Improved Info Section */
       .info {
         background-color: #34495e; /* Deep blue-gray for elegance */
-        padding: 20px 30px;
+        padding: 4px;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
         color: #ecf0f1;
         font-family: "Poppins", sans-serif;
-        font-size: 20px; /* Slightly larger for better readability */
+        font-size: 18px; /* Slightly larger for better readability */
         text-align: center;
         margin: 20px auto;
         max-width: 800px; /* Increased width for better spacing */
-        line-height: 1.7;
+        line-height: 1.5;
+      }
+
+      .info p {
+        padding: 0 10px;
       }
 
       /* Styling the link */
@@ -67,6 +71,11 @@
         transition: color 0.3s ease-in-out; /* Smooth transition for hover */
       }
 
+      .info h1 {
+        color: white;
+        font-size: 24px;
+      }
+
       .info a:hover {
         color: #16a085; /* Slightly darker turquoise on hover */
         text-decoration: underline;
@@ -75,14 +84,14 @@
       /* User List Section */
       #userList {
         background-color: #2c3e50; /* Dark blue for a professional feel */
-        padding: 16px 22px;
+        padding: 20px;
         border-radius: 8px;
         color: #f7f7f7;
         font-family: "Poppins", sans-serif;
         font-size: 18px; /* Improved readability */
         text-align: center;
         max-width: 300px;
-        margin: 40px auto;
+        margin: 20px auto;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* Subtle depth with shadow */
       }
 
@@ -136,19 +145,22 @@
 
     <!-- Information Section -->
     <div class="info">
-      Join the game via API (<a
-        href="/openapi.yaml"
-        target="_blank"
-        rel="noopener noreferrer"
-        >OpenAPI specs here</a
-      >), get a token, and shoot at a moving target by sending API requests with
-      X, Y coordinates. Hit the target first to win!
+      <h1>https://codemotion.pagopa.it</h1>
+      <p>
+        Join the game via API (<a
+          href="/openapi.yaml"
+          target="_blank"
+          rel="noopener noreferrer"
+          >OpenAPI specs here</a
+        >), get a token, and shoot at a moving target by sending API requests
+        with X, Y coordinates. Hit the target first to win!
+      </p>
     </div>
 
     <!-- Canvas Element -->
     <canvas id="gameCanvas" width="1024" height="600"></canvas>
 
-    <div class="info" id="userList">
+    <div id="userList">
       <p id="users">Waiting to get connected users...</p>
       <p id="winnerMessage"></p>
     </div>
